@@ -18,9 +18,16 @@ SPECTRAL_V2_REPORT="${SPECTRAL_V2_REPORT:-spectral-v2-report.json}"
 count_file_issues() {
     local file="$1"
     local pattern="${2:-.*}"
+    local count
     
     if [[ -f "$file" ]] && [[ -s "$file" ]]; then
-        grep -c "$pattern" "$file" 2>/dev/null || echo "0"
+        count=$(grep -c "$pattern" "$file" 2>/dev/null)
+        # Ensure we return a valid number
+        if [[ "$count" =~ ^[0-9]+$ ]]; then
+            echo "$count"
+        else
+            echo "0"
+        fi
     else
         echo "0"
     fi
@@ -29,9 +36,16 @@ count_file_issues() {
 count_json_issues() {
     local file="$1"
     local severity="${2:-0}"  # 0=error, 1=warn, 2=info, 3=hint
+    local count
     
     if [[ -f "$file" ]] && [[ -s "$file" ]] && command -v jq &> /dev/null; then
-        jq "[.[] | select(.severity == $severity)] | length" "$file" 2>/dev/null || echo "0"
+        count=$(jq -r "[.[] | select(.severity == $severity)] | length" "$file" 2>/dev/null)
+        # Ensure we return a valid number
+        if [[ "$count" =~ ^[0-9]+$ ]]; then
+            echo "$count"
+        else
+            echo "0"
+        fi
     else
         echo "0"
     fi
@@ -40,27 +54,41 @@ count_json_issues() {
 # Count different types of issues
 V1_BREAKING_COUNT=$(count_file_issues "$V1_BREAKING_REPORT" "error\|BREAKING")
 V2_BREAKING_COUNT=$(count_file_issues "$V2_BREAKING_REPORT" "error\|BREAKING")
+
+# Ensure variables are numeric
+V1_BREAKING_COUNT=${V1_BREAKING_COUNT:-0}
+V2_BREAKING_COUNT=${V2_BREAKING_COUNT:-0}
 TOTAL_BREAKING=$((V1_BREAKING_COUNT + V2_BREAKING_COUNT))
 
 V1_SPECTRAL_ERRORS=$(count_json_issues "$SPECTRAL_V1_REPORT" 0)
 V2_SPECTRAL_ERRORS=$(count_json_issues "$SPECTRAL_V2_REPORT" 0)
+V1_SPECTRAL_ERRORS=${V1_SPECTRAL_ERRORS:-0}
+V2_SPECTRAL_ERRORS=${V2_SPECTRAL_ERRORS:-0}
 TOTAL_SPECTRAL_ERRORS=$((V1_SPECTRAL_ERRORS + V2_SPECTRAL_ERRORS))
 
 V1_SPECTRAL_WARNINGS=$(count_json_issues "$SPECTRAL_V1_REPORT" 1)
 V2_SPECTRAL_WARNINGS=$(count_json_issues "$SPECTRAL_V2_REPORT" 1)
+V1_SPECTRAL_WARNINGS=${V1_SPECTRAL_WARNINGS:-0}
+V2_SPECTRAL_WARNINGS=${V2_SPECTRAL_WARNINGS:-0}
 TOTAL_SPECTRAL_WARNINGS=$((V1_SPECTRAL_WARNINGS + V2_SPECTRAL_WARNINGS))
 
 # Count changes from detailed diffs
 V1_NEW_ENDPOINTS=$(count_file_issues "$V1_DETAILED_DIFF" "added.*path")
 V2_NEW_ENDPOINTS=$(count_file_issues "$V2_DETAILED_DIFF" "added.*path")
+V1_NEW_ENDPOINTS=${V1_NEW_ENDPOINTS:-0}
+V2_NEW_ENDPOINTS=${V2_NEW_ENDPOINTS:-0}
 TOTAL_NEW_ENDPOINTS=$((V1_NEW_ENDPOINTS + V2_NEW_ENDPOINTS))
 
 V1_REMOVED_ENDPOINTS=$(count_file_issues "$V1_DETAILED_DIFF" "deleted.*path")
 V2_REMOVED_ENDPOINTS=$(count_file_issues "$V2_DETAILED_DIFF" "deleted.*path")
+V1_REMOVED_ENDPOINTS=${V1_REMOVED_ENDPOINTS:-0}
+V2_REMOVED_ENDPOINTS=${V2_REMOVED_ENDPOINTS:-0}
 TOTAL_REMOVED_ENDPOINTS=$((V1_REMOVED_ENDPOINTS + V2_REMOVED_ENDPOINTS))
 
 V1_MODIFIED_ENDPOINTS=$(count_file_issues "$V1_DETAILED_DIFF" "modified.*path")
 V2_MODIFIED_ENDPOINTS=$(count_file_issues "$V2_DETAILED_DIFF" "modified.*path")
+V1_MODIFIED_ENDPOINTS=${V1_MODIFIED_ENDPOINTS:-0}
+V2_MODIFIED_ENDPOINTS=${V2_MODIFIED_ENDPOINTS:-0}
 TOTAL_MODIFIED_ENDPOINTS=$((V1_MODIFIED_ENDPOINTS + V2_MODIFIED_ENDPOINTS))
 
 # Start generating the report
