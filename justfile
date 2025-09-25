@@ -281,10 +281,10 @@ api-lint:
     cargo run -p openapi --features v2
     @echo "Running Spectral validation..."
     @if [ -f "api-reference/v1/openapi_spec_v1.json" ]; then \
-        spectral lint api-reference/v1/openapi_spec_v1.json --ruleset .spectral-hyperswitch.yml || true; \
+        spectral lint api-reference/v1/openapi_spec_v1.json --ruleset .spectral-hyperswitch.yml --format stylish || true; \
     fi
     @if [ -f "api-reference/v2/openapi_spec_v2.json" ]; then \
-        spectral lint api-reference/v2/openapi_spec_v2.json --ruleset .spectral-hyperswitch.yml || true; \
+        spectral lint api-reference/v2/openapi_spec_v2.json --ruleset .spectral-hyperswitch.yml --format stylish || true; \
     fi
 
 # Quick check for breaking changes only (no linting)

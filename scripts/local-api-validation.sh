@@ -166,7 +166,7 @@ run_spectral_validation() {
         return 0
     fi
     
-    if spectral lint "$schema_file" --ruleset .spectral-hyperswitch.yml --format json > "$output_file" 2>&1; then
+    if spectral lint "$schema_file" --ruleset .spectral-hyperswitch.yml --format json --quiet > "$output_file" 2>&1; then
         log_success "$version schema passed Spectral validation"
         return 0
     else

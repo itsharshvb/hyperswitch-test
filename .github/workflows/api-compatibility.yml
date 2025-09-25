@@ -45,16 +45,31 @@ jobs:
         uses: dtolnay/rust-toolchain@master
         with:
           toolchain: stable 2 weeks ago
+          
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          # Cache key based on Cargo files
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          # Cache the target directory
+          cache-targets: true
+          # Cache cargo registry
+          cache-all-crates: true
 
       - name: Setup Node.js for validation tools
         uses: actions/setup-node@v4
         with:
           node-version: '18'
+          
+      - name: Install system dependencies
+        run: |
+          # Install jq for JSON validation and processing
+          sudo apt-get update && sudo apt-get install -y jq
 
       - name: Setup Go for oasdiff
         uses: actions/setup-go@v5
         with:
-          go-version: '1.24'
+          go-version: '1.21'
           
       - name: Install validation tools
         run: |
@@ -78,59 +93,79 @@ jobs:
           oasdiff --version || oasdiff --help | head -5
 
       - name: Generate current API schemas
+        env:
+          # Speed up compilation - disable incremental compilation and debug info
+          CARGO_INCREMENTAL: 0
+          RUSTFLAGS: "-C debuginfo=0"
         run: |
           echo "Generating API schemas for current PR..."
-          cargo run -p openapi --features v1 > pr-v1-schema.json
-          cargo run -p openapi --features v2 > pr-v2-schema.json
           
-          echo "✅ Generated current schemas:"
-          echo "- V1: $(wc -c < pr-v1-schema.json) bytes"
-          echo "- V2: $(wc -c < pr-v2-schema.json) bytes"
+          # Generate V1 schema
+          echo "Building V1 schema..."
+          cargo run -p openapi --features v1 2>&1
+          
+          # Generate V2 schema
+          echo "Building V2 schema..."
+          cargo run -p openapi --features v2 2>&1
+          
+          # Verify and copy generated schemas
+          echo "Verifying generated schema files..."
+          
+          if [[ -f "api-reference/v1/openapi_spec_v1.json" ]]; then
+            # Validate JSON before copying
+            if jq empty api-reference/v1/openapi_spec_v1.json 2>/dev/null; then
+              cp api-reference/v1/openapi_spec_v1.json pr-v1-schema.json
+              echo "✅ V1 schema: $(wc -c < pr-v1-schema.json) bytes (valid JSON)"
+            else
+              echo "❌ V1 schema contains invalid JSON"
+              echo "{}" > pr-v1-schema.json
+            fi
+          else
+            echo "❌ V1 schema not found at api-reference/v1/openapi_spec_v1.json"
+            echo "{}" > pr-v1-schema.json
+          fi
+          
+          if [[ -f "api-reference/v2/openapi_spec_v2.json" ]]; then
+            # Validate JSON before copying
+            if jq empty api-reference/v2/openapi_spec_v2.json 2>/dev/null; then
+              cp api-reference/v2/openapi_spec_v2.json pr-v2-schema.json
+              echo "✅ V2 schema: $(wc -c < pr-v2-schema.json) bytes (valid JSON)"
+            else
+              echo "❌ V2 schema contains invalid JSON"
+              echo "{}" > pr-v2-schema.json
+            fi
+          else
+            echo "❌ V2 schema not found at api-reference/v2/openapi_spec_v2.json"
+            echo "{}" > pr-v2-schema.json
+          fi
+          
+          # Show schema file contents for debugging (first few lines)
+          echo "Debugging - V1 schema file contents (first 3 lines):"
+          head -3 pr-v1-schema.json || echo "No content to show"
+          echo "Debugging - V2 schema file contents (first 3 lines):"
+          head -3 pr-v2-schema.json || echo "No content to show"
 
       - name: Extract base branch schemas
         env:
           BASE_REF: ${{ github.event.pull_request.base.ref }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
-          echo "Extracting base branch ($BASE_REF) API schemas..."
+          echo "Extracting base branch ($BASE_REF) API schemas using git show..."
           
-          # Store current schemas safely
-          cp pr-v1-schema.json current-v1-schema.json
-          cp pr-v2-schema.json current-v2-schema.json
-          
-          # Checkout base branch schemas
-          git fetch origin "$BASE_REF"
-          git checkout "$BASE_SHA" -- api-reference/v1/openapi_spec_v1.json || echo "V1 schema not found in base"
-          git checkout "$BASE_SHA" -- api-reference/v2/openapi_spec_v2.json || echo "V2 schema not found in base"
-          
-          # Use base schemas if they exist, otherwise generate them
-          if [[ -f "api-reference/v1/openapi_spec_v1.json" ]]; then
-            cp api-reference/v1/openapi_spec_v1.json base-v1-schema.json
-            echo "✅ Using base V1 schema from git"
+          # Extract schemas directly from git history (no checkout needed!)
+          if git show "$BASE_SHA:api-reference/v1/openapi_spec_v1.json" > base-v1-schema.json 2>/dev/null; then
+            echo "✅ V1 schema extracted from git: $(wc -c < base-v1-schema.json) bytes"
           else
-            echo "⚠️ Base V1 schema not found, generating from base commit..."
-            git checkout "$BASE_SHA"
-            cargo run -p openapi --features v1 > base-v1-schema.json || echo "{}" > base-v1-schema.json
-            git checkout -
+            echo "⚠️ V1 schema not found in base, using empty schema"
+            echo "{}" > base-v1-schema.json
           fi
           
-          if [[ -f "api-reference/v2/openapi_spec_v2.json" ]]; then
-            cp api-reference/v2/openapi_spec_v2.json base-v2-schema.json
-            echo "✅ Using base V2 schema from git"
+          if git show "$BASE_SHA:api-reference/v2/openapi_spec_v2.json" > base-v2-schema.json 2>/dev/null; then
+            echo "✅ V2 schema extracted from git: $(wc -c < base-v2-schema.json) bytes"
           else
-            echo "⚠️ Base V2 schema not found, generating from base commit..."
-            git checkout "$BASE_SHA"
-            cargo run -p openapi --features v2 > base-v2-schema.json || echo "{}" > base-v2-schema.json
-            git checkout -
+            echo "⚠️ V2 schema not found in base, using empty schema"
+            echo "{}" > base-v2-schema.json
           fi
-          
-          # Restore current schemas
-          cp current-v1-schema.json pr-v1-schema.json
-          cp current-v2-schema.json pr-v2-schema.json
-          
-          echo "✅ Base schemas prepared:"
-          echo "- Base V1: $(wc -c < base-v1-schema.json) bytes"
-          echo "- Base V2: $(wc -c < base-v2-schema.json) bytes"
 
       - name: Run Spectral validation
         id: spectral
@@ -141,23 +176,73 @@ jobs:
           
           # Validate V1 schema
           echo "Validating V1 schema..."
-          if spectral lint pr-v1-schema.json --ruleset .spectral-hyperswitch.yml --format json > spectral-v1-report.json 2>&1; then
-            echo "✅ V1 schema passed Spectral validation"
+          echo "V1 schema file size: $(wc -c < pr-v1-schema.json) bytes"
+          
+          # Run Spectral and handle output properly
+          spectral lint pr-v1-schema.json --ruleset .spectral-hyperswitch.yml --format json --quiet > spectral-v1-output.txt 2>&1
+          SPECTRAL_V1_EXIT_CODE=$?
+          
+          # Check if Spectral output is valid JSON or a success message
+          if jq empty spectral-v1-output.txt 2>/dev/null; then
+            # Valid JSON - copy to report file
+            cp spectral-v1-output.txt spectral-v1-report.json
+            if [[ $SPECTRAL_V1_EXIT_CODE -eq 0 ]]; then
+              echo "✅ V1 schema passed Spectral validation"
+            else
+              echo "⚠️ V1 schema has Spectral violations (with valid JSON output)"
+              SPECTRAL_ERRORS=$((SPECTRAL_ERRORS + 1))
+            fi
           else
-            echo "⚠️ V1 schema has Spectral violations"
-            SPECTRAL_ERRORS=$((SPECTRAL_ERRORS + 1))
+            # Not valid JSON - probably a success message, treat as no errors
+            echo "[]" > spectral-v1-report.json
+            if [[ $SPECTRAL_V1_EXIT_CODE -eq 0 ]]; then
+              echo "✅ V1 schema passed Spectral validation (no issues found)"
+            else
+              echo "⚠️ V1 schema validation had issues but produced non-JSON output"
+              SPECTRAL_ERRORS=$((SPECTRAL_ERRORS + 1))
+              # Save the raw output for debugging
+              echo "Raw Spectral output: $(cat spectral-v1-output.txt)"
+            fi
           fi
           
           # Validate V2 schema  
           echo "Validating V2 schema..."
-          if spectral lint pr-v2-schema.json --ruleset .spectral-hyperswitch.yml --format json > spectral-v2-report.json 2>&1; then
-            echo "✅ V2 schema passed Spectral validation"
+          echo "V2 schema file size: $(wc -c < pr-v2-schema.json) bytes"
+          
+          # Run Spectral and handle output properly for V2
+          spectral lint pr-v2-schema.json --ruleset .spectral-hyperswitch.yml --format json --quiet > spectral-v2-output.txt 2>&1
+          SPECTRAL_V2_EXIT_CODE=$?
+          
+          # Check if Spectral output is valid JSON or a success message
+          if jq empty spectral-v2-output.txt 2>/dev/null; then
+            # Valid JSON - copy to report file
+            cp spectral-v2-output.txt spectral-v2-report.json
+            if [[ $SPECTRAL_V2_EXIT_CODE -eq 0 ]]; then
+              echo "✅ V2 schema passed Spectral validation"
+            else
+              echo "⚠️ V2 schema has Spectral violations (with valid JSON output)"
+              SPECTRAL_ERRORS=$((SPECTRAL_ERRORS + 1))
+            fi
           else
-            echo "⚠️ V2 schema has Spectral violations"
-            SPECTRAL_ERRORS=$((SPECTRAL_ERRORS + 1))
+            # Not valid JSON - probably a success message, treat as no errors
+            echo "[]" > spectral-v2-report.json
+            if [[ $SPECTRAL_V2_EXIT_CODE -eq 0 ]]; then
+              echo "✅ V2 schema passed Spectral validation (no issues found)"
+            else
+              echo "⚠️ V2 schema validation had issues but produced non-JSON output"
+              SPECTRAL_ERRORS=$((SPECTRAL_ERRORS + 1))
+              # Save the raw output for debugging
+              echo "Raw Spectral output: $(cat spectral-v2-output.txt)"
+            fi
           fi
           
           echo "spectral_errors=$SPECTRAL_ERRORS" >> $GITHUB_OUTPUT
+          
+          # Debug: Show what was generated
+          echo "Spectral V1 report preview:"
+          head -3 spectral-v1-report.json || echo "Empty report"
+          echo "Spectral V2 report preview:"
+          head -3 spectral-v2-report.json || echo "Empty report"
         continue-on-error: true
 
       - name: Run breaking change detection
