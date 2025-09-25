@@ -52,17 +52,17 @@ jobs:
           node-version: '18'
 
       - name: Setup Go for oasdiff
-        uses: actions/setup-go@v4
+        uses: actions/setup-go@v5
         with:
-          go-version: '1.21'
+          go-version: '1.24'
           
       - name: Install validation tools
         run: |
           # Install Spectral CLI for linting
           npm install -g @stoplight/spectral-cli@6.11.0
           
-          # Install oasdiff using Go
-          go install github.com/tufin/oasdiff@latest
+          # Install oasdiff using Go with correct module path
+          go install github.com/oasdiff/oasdiff@latest
           
           # Add Go bin to PATH for current session
           echo "$HOME/go/bin" >> $GITHUB_PATH
