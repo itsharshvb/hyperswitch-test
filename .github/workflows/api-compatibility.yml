@@ -51,23 +51,31 @@ jobs:
         with:
           node-version: '18'
 
+      - name: Setup Go for oasdiff
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+          
       - name: Install validation tools
         run: |
           # Install Spectral CLI for linting
           npm install -g @stoplight/spectral-cli@6.11.0
           
-          # Install oasdiff for breaking change detection
-          if [[ "$RUNNER_OS" == "Linux" ]]; then
-            curl -L https://github.com/Tufin/oasdiff/releases/latest/download/oasdiff_linux_amd64 -o oasdiff
-            chmod +x oasdiff
-            sudo mv oasdiff /usr/local/bin/
-          elif [[ "$RUNNER_OS" == "macOS" ]]; then
-            brew install oasdiff
-          fi
+          # Install oasdiff using Go
+          go install github.com/tufin/oasdiff@latest
+          
+          # Add Go bin to PATH for current session
+          echo "$HOME/go/bin" >> $GITHUB_PATH
           
           # Verify installations
           spectral --version
-          oasdiff version
+          echo "oasdiff installation completed"
+          
+      - name: Verify oasdiff installation
+        run: |
+          # Verify oasdiff is accessible
+          export PATH="$HOME/go/bin:$PATH"
+          oasdiff --version || oasdiff --help | head -5
 
       - name: Generate current API schemas
         run: |
