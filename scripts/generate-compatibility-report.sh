@@ -93,46 +93,46 @@ TOTAL_MODIFIED_ENDPOINTS=$((V1_MODIFIED_ENDPOINTS + V2_MODIFIED_ENDPOINTS))
 
 # Start generating the report
 cat << EOF
-## 📊 Summary
+## Summary
 
 | Metric | V1 API | V2 API | Total |
 |--------|--------|--------|-------|
-| **Breaking Changes** | $V1_BREAKING_COUNT | $V2_BREAKING_COUNT | **$TOTAL_BREAKING** |
-| **Spectral Errors** | $V1_SPECTRAL_ERRORS | $V2_SPECTRAL_ERRORS | **$TOTAL_SPECTRAL_ERRORS** |
-| **Spectral Warnings** | $V1_SPECTRAL_WARNINGS | $V2_SPECTRAL_WARNINGS | **$TOTAL_SPECTRAL_WARNINGS** |
-| **New Endpoints** | $V1_NEW_ENDPOINTS | $V2_NEW_ENDPOINTS | **$TOTAL_NEW_ENDPOINTS** |
-| **Removed Endpoints** | $V1_REMOVED_ENDPOINTS | $V2_REMOVED_ENDPOINTS | **$TOTAL_REMOVED_ENDPOINTS** |
-| **Modified Endpoints** | $V1_MODIFIED_ENDPOINTS | $V2_MODIFIED_ENDPOINTS | **$TOTAL_MODIFIED_ENDPOINTS** |
+| Breaking Changes | $V1_BREAKING_COUNT | $V2_BREAKING_COUNT | $TOTAL_BREAKING |
+| Spectral Errors | $V1_SPECTRAL_ERRORS | $V2_SPECTRAL_ERRORS | $TOTAL_SPECTRAL_ERRORS |
+| Spectral Warnings | $V1_SPECTRAL_WARNINGS | $V2_SPECTRAL_WARNINGS | $TOTAL_SPECTRAL_WARNINGS |
+| New Endpoints | $V1_NEW_ENDPOINTS | $V2_NEW_ENDPOINTS | $TOTAL_NEW_ENDPOINTS |
+| Removed Endpoints | $V1_REMOVED_ENDPOINTS | $V2_REMOVED_ENDPOINTS | $TOTAL_REMOVED_ENDPOINTS |
+| Modified Endpoints | $V1_MODIFIED_ENDPOINTS | $V2_MODIFIED_ENDPOINTS | $TOTAL_MODIFIED_ENDPOINTS |
 
 EOF
 
 # Overall status
 if [[ $TOTAL_BREAKING -gt 0 ]]; then
     cat << EOF
-### 🚨 Overall Status: BREAKING CHANGES DETECTED
+### Status: BREAKING CHANGES DETECTED
 
-**❌ This change introduces breaking changes that will affect existing API clients.**
+This change introduces breaking changes that will affect existing API clients.
 
 EOF
 elif [[ $TOTAL_SPECTRAL_ERRORS -gt 0 ]]; then
     cat << EOF
-### ⚠️ Overall Status: VALIDATION ERRORS FOUND
+### Status: VALIDATION ERRORS FOUND
 
-**⚠️ This change has API specification errors that should be fixed.**
+This change has API specification errors that should be fixed.
 
 EOF
 elif [[ $TOTAL_SPECTRAL_WARNINGS -gt 0 ]]; then
     cat << EOF
-### 💭 Overall Status: REVIEW RECOMMENDED
+### Status: REVIEW RECOMMENDED
 
-**💭 This change has some API quality issues worth reviewing.**
+This change has API quality issues worth reviewing.
 
 EOF
 else
     cat << EOF
-### ✅ Overall Status: ALL CHECKS PASSED
+### Status: ALL CHECKS PASSED
 
-**✅ This change is backward compatible and follows API best practices.**
+This change is backward compatible.
 
 EOF
 fi
@@ -142,7 +142,7 @@ if [[ $TOTAL_BREAKING -gt 0 ]]; then
     cat << EOF
 ---
 
-## 🚨 Breaking Changes Detected
+## Breaking Changes Detected
 
 EOF
     
@@ -152,16 +152,15 @@ EOF
 
 EOF
         if [[ -f "$V1_BREAKING_REPORT" ]] && [[ -s "$V1_BREAKING_REPORT" ]]; then
-            # Show first 10 lines of breaking changes
-            head -10 "$V1_BREAKING_REPORT" | while IFS= read -r line; do
+            # Show first 5 lines of breaking changes (more concise)
+            head -5 "$V1_BREAKING_REPORT" | while IFS= read -r line; do
                 echo "- $line"
             done
             
-            local total_lines
             total_lines=$(wc -l < "$V1_BREAKING_REPORT" 2>/dev/null || echo "0")
-            if [[ $total_lines -gt 10 ]]; then
+            if [[ $total_lines -gt 5 ]]; then
                 echo ""
-                echo "*... and $((total_lines - 10)) more breaking changes*"
+                echo "*... and $((total_lines - 5)) more issues*"
             fi
         fi
         echo ""
@@ -173,16 +172,15 @@ EOF
 
 EOF
         if [[ -f "$V2_BREAKING_REPORT" ]] && [[ -s "$V2_BREAKING_REPORT" ]]; then
-            # Show first 10 lines of breaking changes
-            head -10 "$V2_BREAKING_REPORT" | while IFS= read -r line; do
+            # Show first 5 lines of breaking changes (more concise)
+            head -5 "$V2_BREAKING_REPORT" | while IFS= read -r line; do
                 echo "- $line"
             done
             
-            local total_lines
             total_lines=$(wc -l < "$V2_BREAKING_REPORT" 2>/dev/null || echo "0")
-            if [[ $total_lines -gt 10 ]]; then
+            if [[ $total_lines -gt 5 ]]; then
                 echo ""
-                echo "*... and $((total_lines - 10)) more breaking changes*"
+                echo "*... and $((total_lines - 5)) more issues*"
             fi
         fi
         echo ""
@@ -194,13 +192,13 @@ if [[ $TOTAL_NEW_ENDPOINTS -gt 0 ]] || [[ $TOTAL_REMOVED_ENDPOINTS -gt 0 ]] || [
     cat << EOF
 ---
 
-## 🔄 API Changes
+## API Changes
 
 EOF
     
     if [[ $TOTAL_NEW_ENDPOINTS -gt 0 ]]; then
         cat << EOF
-### ✅ New Endpoints ($TOTAL_NEW_ENDPOINTS)
+### New Endpoints ($TOTAL_NEW_ENDPOINTS)
 
 These are safe, backward-compatible additions:
 
@@ -234,7 +232,7 @@ EOF
     
     if [[ $TOTAL_REMOVED_ENDPOINTS -gt 0 ]]; then
         cat << EOF
-### ❌ Removed Endpoints ($TOTAL_REMOVED_ENDPOINTS) - BREAKING
+### Removed Endpoints ($TOTAL_REMOVED_ENDPOINTS) - BREAKING
 
 These endpoint removals will break existing clients:
 
@@ -250,9 +248,9 @@ EOF
                     if [[ $line =~ method\ \'([^\']+)\'.*path\ \'([^\']+)\' ]]; then
                         method="${BASH_REMATCH[1]}"
                         path="${BASH_REMATCH[2]}"
-                        echo "- **$method** \`$path\` 🚨"
+                        echo "- **$method** \`$path\` (BREAKING)"
                     else
-                        echo "- $line 🚨"
+                        echo "- $line (BREAKING)"
                     fi
                 done
                 
@@ -266,7 +264,7 @@ EOF
     
     if [[ $TOTAL_MODIFIED_ENDPOINTS -gt 0 ]]; then
         cat << EOF
-### 🔄 Modified Endpoints ($TOTAL_MODIFIED_ENDPOINTS)
+### Modified Endpoints ($TOTAL_MODIFIED_ENDPOINTS)
 
 These endpoints have been changed (review for breaking changes):
 
@@ -308,7 +306,7 @@ EOF
     
     if [[ $TOTAL_SPECTRAL_ERRORS -gt 0 ]]; then
         cat << EOF
-### ❌ Spectral Errors ($TOTAL_SPECTRAL_ERRORS)
+### Spectral Errors ($TOTAL_SPECTRAL_ERRORS)
 
 These issues should be fixed before merging:
 
@@ -320,10 +318,10 @@ EOF
             
             if [[ $count -gt 0 ]] && [[ -f "$report_file" ]] && command -v jq &> /dev/null; then
                 echo "**$version API:**"
-                jq -r '.[] | select(.severity == 0) | "- \(.message) (\(.path | join(".")))"' "$report_file" 2>/dev/null | head -5
+                jq -r '.[] | select(.severity == 0) | "- \(.message) (\(.path | join(".")))"' "$report_file" 2>/dev/null | head -3
                 
-                if [[ $count -gt 5 ]]; then
-                    echo "- *... and $((count - 5)) more errors*"
+                if [[ $count -gt 3 ]]; then
+                    echo "- *... and $((count - 3)) more errors*"
                 fi
                 echo ""
             fi
@@ -332,7 +330,7 @@ EOF
     
     if [[ $TOTAL_SPECTRAL_WARNINGS -gt 0 ]]; then
         cat << EOF
-### ⚠️ Spectral Warnings ($TOTAL_SPECTRAL_WARNINGS)
+### Spectral Warnings ($TOTAL_SPECTRAL_WARNINGS)
 
 These issues are recommended to fix:
 
@@ -355,72 +353,33 @@ EOF
     fi
 fi
 
-# Recommendations Section
-cat << EOF
----
-
-## 💡 Recommendations
-
-EOF
-
 if [[ $TOTAL_BREAKING -gt 0 ]]; then
     cat << EOF
-### ❌ Breaking Changes Action Required
+---
 
-**Immediate Actions:**
-- 🔄 **Consider API versioning** - Create new endpoints (e.g., \`/v3/\`) instead of modifying existing ones
-- 📋 **Review change necessity** - Are these breaking changes absolutely required?
-- 📞 **Coordinate with consumers** - Notify all API consumers before deployment
-- 🗓️ **Plan deprecation timeline** - Provide advance notice and migration path
+## Recommendations
 
-**Before Merging:**
-- Update API documentation with breaking change notices
-- Consider implementing deprecation warnings for removed endpoints
-- Ensure client SDKs are updated to handle changes
-- Plan communication strategy for API consumers
+**Breaking changes detected** - Review carefully before merging:
+- Consider API versioning instead of modifying existing endpoints
+- Coordinate with API consumers before deployment
+- Update documentation with breaking change notices
 
 EOF
 elif [[ $TOTAL_SPECTRAL_ERRORS -gt 0 ]]; then
     cat << EOF
-### ⚠️ Quality Issues Should Be Fixed
+---
 
-**Recommended Actions:**
-- 🔧 **Fix Spectral errors** - Address API specification issues
-- 📝 **Improve documentation** - Add missing descriptions and examples
-- ✅ **Validate changes** - Run \`just api-validate\` locally after fixes
+## Recommendations
 
-EOF
-elif [[ $TOTAL_SPECTRAL_WARNINGS -gt 0 ]]; then
-    cat << EOF
-### 💭 Consider Quality Improvements
-
-**Optional Actions:**
-- 📝 **Address warnings** - Improve API documentation and consistency
-- 🎯 **Follow best practices** - Consider the Spectral suggestions for better API design
-
-EOF
-else
-    cat << EOF
-### ✅ Ready to Deploy
-
-**Next Steps:**
-- 🚀 **Safe to merge** - No breaking changes or critical issues detected
-- 📚 **Update documentation** - Document any new features or endpoints added
-- 🧪 **Test integration** - Verify changes work as expected with existing clients
+**Fix API specification errors** before merging:
+- Address Spectral errors in the schema
+- Run \`just api-validate\` locally to verify fixes
 
 EOF
 fi
 
 # Footer
 cat << EOF
----
-
-## 📁 Detailed Reports
-
-For complete details, check these files:
-- **Breaking Changes**: \`$V1_BREAKING_REPORT\`, \`$V2_BREAKING_REPORT\`
-- **Detailed Diffs**: \`$V1_DETAILED_DIFF\`, \`$V2_DETAILED_DIFF\`
-- **Spectral Reports**: \`$SPECTRAL_V1_REPORT\`, \`$SPECTRAL_V2_REPORT\`
 
 Generated at: $(date)
 EOF
