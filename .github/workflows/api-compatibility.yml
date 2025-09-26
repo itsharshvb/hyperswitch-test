@@ -16,6 +16,8 @@ on:
       - '.spectral-hyperswitch.yml'
     types: [opened, synchronize, reopened, labeled, unlabeled]
 
+  workflow_dispatch:
+
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
