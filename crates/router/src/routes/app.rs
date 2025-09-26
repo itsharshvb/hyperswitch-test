@@ -1756,7 +1756,7 @@ impl MerchantConnectorAccount {
 #[cfg(all(any(feature = "olap", feature = "oltp"), feature = "v1"))]
 impl MerchantConnectorAccount {
     pub fn server(state: AppState) -> Scope {
-        let mut route = web::scope("/account").app_data(web::Data::new(state));
+        let mut route = web::scope("/acounts").app_data(web::Data::new(state));
 
         #[cfg(feature = "olap")]
         {

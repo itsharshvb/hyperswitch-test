@@ -40,7 +40,7 @@ pub async fn create_payment_method_api() {}
 /// Use the client secret and publishable key authorization to list all relevant payment methods of the merchant for the payment corresponding to the client secret.
 #[utoipa::path(
     get,
-    path = "/account/payment_methods",
+    path = "/acounts/payment_methods",
     params (
         ("client_secret" = Option<String>, Query, description = "This is a token which expires after 15 minutes, used from the client to authenticate and create sessions from the SDK"),
         ("accepted_countries" = Option<Vec<CountryAlpha2>>, Query, description = "The two-letter ISO currency code"),

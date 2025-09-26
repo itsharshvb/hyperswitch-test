@@ -3283,7 +3283,7 @@
         ]
       }
     },
-    "/account/payment_methods": {
+    "/acounts/payment_methods": {
       "get": {
         "tags": [
           "Payment Methods"
