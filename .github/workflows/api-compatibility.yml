@@ -1,0 +1,409 @@
+name: API Compatibility Check
+
+# This workflow:
+# - Runs on ALL PRs that modify API-related files
+# - Comments on PRs ONLY when 'validate-api' label is present
+# - Always fails if breaking changes are detected (regardless of label)
+
+on:
+  pull_request:
+    paths:
+      - 'crates/api_models/**'
+      - 'crates/openapi/**'
+      - 'crates/router/**'
+      - 'api-reference/**'
+      - '.oasdiff-config.yaml'
+      - '.spectral-hyperswitch.yml'
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api-compatibility-check:
+    name: API Schema Compatibility Validation
+    runs-on: ubuntu-latest
+    
+    # Run on all PRs that modify API-related files
+    if: github.event_name == 'pull_request'
+    
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          token: ${{ github.token }}
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: stable 2 weeks ago
+          
+      - name: Setup Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          # Cache key based on Cargo files
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          # Cache the target directory
+          cache-targets: true
+          # Cache cargo registry
+          cache-all-crates: true
+
+      - name: Setup Node.js for validation tools
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          
+      - name: Install system dependencies
+        run: |
+          # Install jq for JSON validation and processing
+          sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Setup Go for oasdiff
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+          
+      - name: Install validation tools
+        run: |
+          # Install Spectral CLI for linting
+          npm install -g @stoplight/spectral-cli@6.11.0
+          
+          # Install oasdiff using Go with correct module path
+          go install github.com/oasdiff/oasdiff@latest
+          
+          # Add Go bin to PATH for current session
+          echo "$HOME/go/bin" >> $GITHUB_PATH
+          
+          # Verify installations
+          spectral --version
+          echo "oasdiff installation completed"
+          
+      - name: Verify oasdiff installation
+        run: |
+          # Verify oasdiff is accessible
+          export PATH="$HOME/go/bin:$PATH"
+          oasdiff --version || oasdiff --help | head -5
+
+      - name: Generate current API schemas
+        env:
+          # Speed up compilation - disable incremental compilation and debug info
+          CARGO_INCREMENTAL: 0
+          RUSTFLAGS: "-C debuginfo=0"
+        run: |
+          echo "Generating API schemas for current PR..."
+          
+          # Generate V1 schema
+          echo "Building V1 schema..."
+          cargo run -p openapi --features v1 2>&1
+          
+          # Generate V2 schema
+          echo "Building V2 schema..."
+          cargo run -p openapi --features v2 2>&1
+          
+          # Verify and copy generated schemas
+          echo "Verifying generated schema files..."
+          
+          if [[ -f "api-reference/v1/openapi_spec_v1.json" ]]; then
+            # Validate JSON before copying
+            if jq empty api-reference/v1/openapi_spec_v1.json 2>/dev/null; then
+              cp api-reference/v1/openapi_spec_v1.json pr-v1-schema.json
+              echo "✅ V1 schema: $(wc -c < pr-v1-schema.json) bytes (valid JSON)"
+            else
+              echo "❌ V1 schema contains invalid JSON"
+              echo "{}" > pr-v1-schema.json
+            fi
+          else
+            echo "❌ V1 schema not found at api-reference/v1/openapi_spec_v1.json"
+            echo "{}" > pr-v1-schema.json
+          fi
+          
+          if [[ -f "api-reference/v2/openapi_spec_v2.json" ]]; then
+            # Validate JSON before copying
+            if jq empty api-reference/v2/openapi_spec_v2.json 2>/dev/null; then
+              cp api-reference/v2/openapi_spec_v2.json pr-v2-schema.json
+              echo "✅ V2 schema: $(wc -c < pr-v2-schema.json) bytes (valid JSON)"
+            else
+              echo "❌ V2 schema contains invalid JSON"
+              echo "{}" > pr-v2-schema.json
+            fi
+          else
+            echo "❌ V2 schema not found at api-reference/v2/openapi_spec_v2.json"
+            echo "{}" > pr-v2-schema.json
+          fi
+          
+          # Show schema file contents for debugging (first few lines)
+          echo "Debugging - V1 schema file contents (first 3 lines):"
+          head -3 pr-v1-schema.json || echo "No content to show"
+          echo "Debugging - V2 schema file contents (first 3 lines):"
+          head -3 pr-v2-schema.json || echo "No content to show"
+
+      - name: Extract base branch schemas
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          echo "Extracting base branch ($BASE_REF) API schemas using git show..."
+          
+          # Extract schemas directly from git history (no checkout needed!)
+          if git show "$BASE_SHA:api-reference/v1/openapi_spec_v1.json" > base-v1-schema.json 2>/dev/null; then
+            echo "✅ V1 schema extracted from git: $(wc -c < base-v1-schema.json) bytes"
+          else
+            echo "⚠️ V1 schema not found in base, using empty schema"
+            echo "{}" > base-v1-schema.json
+          fi
+          
+          if git show "$BASE_SHA:api-reference/v2/openapi_spec_v2.json" > base-v2-schema.json 2>/dev/null; then
+            echo "✅ V2 schema extracted from git: $(wc -c < base-v2-schema.json) bytes"
+          else
+            echo "⚠️ V2 schema not found in base, using empty schema"
+            echo "{}" > base-v2-schema.json
+          fi
+
+      - name: Run Spectral validation
+        id: spectral
+        run: |
+          echo "Running Spectral validation on current schemas..."
+          
+          SPECTRAL_ERRORS=0
+          
+          # Validate V1 schema
+          echo "Validating V1 schema..."
+          echo "V1 schema file size: $(wc -c < pr-v1-schema.json) bytes"
+          
+          # Run Spectral and handle output properly
+          spectral lint pr-v1-schema.json --ruleset .spectral-hyperswitch.yml --format json --quiet > spectral-v1-output.txt 2>&1
+          SPECTRAL_V1_EXIT_CODE=$?
+          
+          # Check if Spectral output is valid JSON or a success message
+          if jq empty spectral-v1-output.txt 2>/dev/null; then
+            # Valid JSON - copy to report file
+            cp spectral-v1-output.txt spectral-v1-report.json
+            if [[ $SPECTRAL_V1_EXIT_CODE -eq 0 ]]; then
+              echo "✅ V1 schema passed Spectral validation"
+            else
+              echo "⚠️ V1 schema has Spectral violations (with valid JSON output)"
+              SPECTRAL_ERRORS=$((SPECTRAL_ERRORS + 1))
+            fi
+          else
+            # Not valid JSON - probably a success message, treat as no errors
+            echo "[]" > spectral-v1-report.json
+            if [[ $SPECTRAL_V1_EXIT_CODE -eq 0 ]]; then
+              echo "✅ V1 schema passed Spectral validation (no issues found)"
+            else
+              echo "⚠️ V1 schema validation had issues but produced non-JSON output"
+              SPECTRAL_ERRORS=$((SPECTRAL_ERRORS + 1))
+              # Save the raw output for debugging
+              echo "Raw Spectral output: $(cat spectral-v1-output.txt)"
+            fi
+          fi
+          
+          # Validate V2 schema  
+          echo "Validating V2 schema..."
+          echo "V2 schema file size: $(wc -c < pr-v2-schema.json) bytes"
+          
+          # Run Spectral and handle output properly for V2
+          spectral lint pr-v2-schema.json --ruleset .spectral-hyperswitch.yml --format json --quiet > spectral-v2-output.txt 2>&1
+          SPECTRAL_V2_EXIT_CODE=$?
+          
+          # Check if Spectral output is valid JSON or a success message
+          if jq empty spectral-v2-output.txt 2>/dev/null; then
+            # Valid JSON - copy to report file
+            cp spectral-v2-output.txt spectral-v2-report.json
+            if [[ $SPECTRAL_V2_EXIT_CODE -eq 0 ]]; then
+              echo "✅ V2 schema passed Spectral validation"
+            else
+              echo "⚠️ V2 schema has Spectral violations (with valid JSON output)"
+              SPECTRAL_ERRORS=$((SPECTRAL_ERRORS + 1))
+            fi
+          else
+            # Not valid JSON - probably a success message, treat as no errors
+            echo "[]" > spectral-v2-report.json
+            if [[ $SPECTRAL_V2_EXIT_CODE -eq 0 ]]; then
+              echo "✅ V2 schema passed Spectral validation (no issues found)"
+            else
+              echo "⚠️ V2 schema validation had issues but produced non-JSON output"
+              SPECTRAL_ERRORS=$((SPECTRAL_ERRORS + 1))
+              # Save the raw output for debugging
+              echo "Raw Spectral output: $(cat spectral-v2-output.txt)"
+            fi
+          fi
+          
+          echo "spectral_errors=$SPECTRAL_ERRORS" >> $GITHUB_OUTPUT
+          
+          # Debug: Show what was generated
+          echo "Spectral V1 report preview:"
+          head -3 spectral-v1-report.json || echo "Empty report"
+          echo "Spectral V2 report preview:"
+          head -3 spectral-v2-report.json || echo "Empty report"
+        continue-on-error: true
+
+      - name: Run breaking change detection
+        id: breaking_changes
+        run: |
+          echo "Analyzing API changes for breaking changes..."
+          
+          BREAKING_CHANGES=0
+          TOTAL_ISSUES=0
+          
+          # Check V1 API changes
+          echo "Checking V1 API for breaking changes..."
+          if oasdiff breaking base-v1-schema.json pr-v1-schema.json > v1-breaking-report.txt 2>&1; then
+            echo "✅ No breaking changes in V1 API"
+            echo "✅ V1 API is backward compatible" > v1-breaking-status.txt
+          else
+            echo "❌ Breaking changes detected in V1 API"
+            echo "❌ Breaking changes detected in V1 API" > v1-breaking-status.txt
+            BREAKING_CHANGES=$((BREAKING_CHANGES + 1))
+            cat v1-breaking-report.txt
+          fi
+          
+          # Check V2 API changes
+          echo "Checking V2 API for breaking changes..."
+          if oasdiff breaking base-v2-schema.json pr-v2-schema.json > v2-breaking-report.txt 2>&1; then
+            echo "✅ No breaking changes in V2 API"
+            echo "✅ V2 API is backward compatible" > v2-breaking-status.txt
+          else
+            echo "❌ Breaking changes detected in V2 API"
+            echo "❌ Breaking changes detected in V2 API" > v2-breaking-status.txt
+            BREAKING_CHANGES=$((BREAKING_CHANGES + 1))
+            cat v2-breaking-report.txt
+          fi
+          
+          # Generate detailed diff reports
+          echo "Generating detailed change reports..."
+          oasdiff diff base-v1-schema.json pr-v1-schema.json > v1-detailed-diff.txt 2>/dev/null || true
+          oasdiff diff base-v2-schema.json pr-v2-schema.json > v2-detailed-diff.txt 2>/dev/null || true
+          
+          echo "breaking_changes=$BREAKING_CHANGES" >> $GITHUB_OUTPUT
+          echo "total_issues=$((BREAKING_CHANGES + ${SPECTRAL_ERRORS:-0}))" >> $GITHUB_OUTPUT
+        continue-on-error: true
+
+      - name: Generate compatibility report
+        id: report
+        run: |
+          # Use enhanced report generation script
+          chmod +x ./scripts/generate-compatibility-report.sh
+          ./scripts/generate-compatibility-report.sh > compatibility-report.md
+          
+          # Set output variables
+          echo "report_generated=true" >> $GITHUB_OUTPUT
+          
+          if [[ "${BREAKING_CHANGES:-0}" -gt 0 ]]; then
+            echo "validation_status=BREAKING CHANGES DETECTED" >> $GITHUB_OUTPUT
+            echo "validation_passed=false" >> $GITHUB_OUTPUT
+          elif [[ "${SPECTRAL_ERRORS:-0}" -gt 0 ]]; then
+            echo "validation_status=LINTING ISSUES FOUND" >> $GITHUB_OUTPUT  
+            echo "validation_passed=partial" >> $GITHUB_OUTPUT
+          else
+            echo "validation_status=ALL CHECKS PASSED" >> $GITHUB_OUTPUT
+            echo "validation_passed=true" >> $GITHUB_OUTPUT
+          fi
+        env:
+          BREAKING_CHANGES: ${{ steps.breaking_changes.outputs.breaking_changes }}
+          SPECTRAL_ERRORS: ${{ steps.spectral.outputs.spectral_errors }}
+
+      - name: Update PR comment
+        if: always() && github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'validate-api')
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const fs = require('fs');
+            
+            // Read the compatibility report
+            let report = '';
+            if (fs.existsSync('compatibility-report.md')) {
+              report = fs.readFileSync('compatibility-report.md', 'utf8');
+            } else {
+              report = 'Could not generate compatibility report. Please check the workflow logs.';
+            }
+            
+            // Create the PR comment body
+            const commentBody = `## API Compatibility Report
+            
+            **Status**: ${{ steps.report.outputs.validation_status || 'Unknown' }}
+            
+            ${report}
+            
+            ---
+            
+            ### Local Testing
+            
+            Test these changes locally:
+            \`\`\`bash
+            # Run full validation
+            just api-validate
+            
+            # Compare with specific branch/commit
+            just api-diff origin/main HEAD
+            \`\`\`
+            
+            ---
+            *Automatically generated by the API Compatibility workflow.*`;
+            
+            // Find existing API compatibility comment
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            
+            const existingComment = comments.data.find(comment => 
+              comment.user.login === 'github-actions[bot]' && 
+              comment.body.includes('API Compatibility Report')
+            );
+            
+            // Update existing comment or create new one
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body: commentBody
+              });
+              console.log('Updated existing API compatibility comment');
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: commentBody
+              });
+              console.log('Created new API compatibility comment');
+            }
+
+      - name: Fail if breaking changes detected
+        if: steps.breaking_changes.outputs.breaking_changes > 0
+        run: |
+          echo "::error::Breaking changes detected in API schema."
+          echo "::error::Found ${{ steps.breaking_changes.outputs.breaking_changes }} breaking change(s)."
+          echo "::error::Please review the compatibility report and consider:"
+          echo "::error::- Creating a new API version (v3)"
+          echo "::error::- Using backward-compatible changes instead"
+          echo "::error::- Coordinating with API consumers before deployment"
+          exit 1
+
+      - name: Upload validation artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: api-validation-artifacts-${{ github.run_number }}
+          path: |
+            pr-v1-schema.json
+            pr-v2-schema.json
+            base-v1-schema.json
+            base-v2-schema.json
+            v1-breaking-report.txt
+            v2-breaking-report.txt
+            v1-detailed-diff.txt
+            v2-detailed-diff.txt
+            spectral-v1-report.json
+            spectral-v2-report.json
+            compatibility-report.md
+            v1-breaking-status.txt
+            v2-breaking-status.txt
+          retention-days: 30
