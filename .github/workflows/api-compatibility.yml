@@ -1,4 +1,4 @@
-name: API Compatibility Check
+name: API Schema Compatibility Check
 
 # This workflow:
 # - Runs on ALL PRs that modify API-related files
@@ -24,7 +24,7 @@ concurrency:
 
 jobs:
   api-compatibility-check:
-    name: API Schema Compatibility Validation
+    name: add `validate-api` label to PRs for details
     runs-on: ubuntu-latest
     
     # Run on all PRs that modify API-related files
@@ -253,7 +253,7 @@ jobs:
           
           # Check V1 API changes
           echo "Checking V1 API for breaking changes..."
-          if oasdiff breaking base-v1-schema.json pr-v1-schema.json > v1-breaking-report.txt 2>&1; then
+          if oasdiff breaking --fail-on ERR base-v1-schema.json pr-v1-schema.json > v1-breaking-report.txt 2>&1; then
             echo "✅ No breaking changes in V1 API"
             echo "✅ V1 API is backward compatible" > v1-breaking-status.txt
           else
@@ -265,7 +265,7 @@ jobs:
           
           # Check V2 API changes
           echo "Checking V2 API for breaking changes..."
-          if oasdiff breaking base-v2-schema.json pr-v2-schema.json > v2-breaking-report.txt 2>&1; then
+          if oasdiff breaking --fail-on ERR base-v2-schema.json pr-v2-schema.json > v2-breaking-report.txt 2>&1; then
             echo "✅ No breaking changes in V2 API"
             echo "✅ V2 API is backward compatible" > v2-breaking-status.txt
           else
