@@ -215,11 +215,11 @@ Never share your secret api keys. Keep them guarded and secure.
         // Routes for 3DS Decision Rule
         routes::three_ds_decision_rule::three_ds_decision_rule_execute,
 
-        // Routes for authentication
-        routes::authentication::authentication_create,
-
         // Routes for platform account
         routes::platform::create_platform_account,
+        
+        // Test route for API compatibility
+        routes::test::test_new_endpoint,
     ),
     components(schemas(
         common_utils::types::MinorUnit,
@@ -860,6 +860,7 @@ Never share your secret api keys. Keep them guarded and secure.
         api_models::open_router::PriorityLogicData,
         api_models::user::PlatformAccountCreateRequest,
         api_models::user::PlatformAccountCreateResponse,
+        crate::routes::test::TestResponse,
     )),
     modifiers(&SecurityAddon)
 )]
