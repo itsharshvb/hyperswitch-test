@@ -22,3 +22,13 @@ rules:
     then:
       field: "paths"
       function: truthy
+      
+  # Additional rules to trigger some violations for testing
+  operation-operationId:
+    description: "Operation must have operationId"
+    message: "All operations should have an operationId"
+    given: "$.paths[*][*]"
+    severity: warn
+    then:
+      field: "operationId"
+      function: truthy

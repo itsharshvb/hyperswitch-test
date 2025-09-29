@@ -2981,7 +2981,7 @@
       }
     },
     "/customers": {
-      "post": {
+      "put": {
         "tags": [
           "Customers"
         ],
@@ -6669,46 +6669,6 @@
         ]
       }
     },
-    "/authentication": {
-      "post": {
-        "tags": [
-          "Authentication"
-        ],
-        "summary": "Authentication - Create",
-        "description": "Create a new authentication for accessing our APIs from your servers.\n",
-        "operationId": "Create an Authentication",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/AuthenticationCreateRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "Authentication created",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AuthenticationResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Invalid data"
-          }
-        },
-        "security": [
-          {
-            "api_key": []
-          }
-        ]
-      }
-    },
     "/user/create_platform": {
       "post": {
         "tags": [
@@ -6765,6 +6725,33 @@
         "security": [
           {
             "jwt_key": []
+          }
+        ]
+      }
+    },
+    "/test/new-endpoint": {
+      "get": {
+        "tags": [
+          "Testing"
+        ],
+        "summary": "Test - New Endpoint",
+        "description": "This is a test endpoint added to verify API compatibility workflow detection of new endpoints.",
+        "operationId": "Test New Endpoint Detection",
+        "responses": {
+          "200": {
+            "description": "Test endpoint response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TestResponse"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "api_key": []
           }
         ]
       }
@@ -23121,7 +23108,8 @@
         "type": "object",
         "required": [
           "amount",
-          "currency"
+          "currency",
+          "customer_id"
         ],
         "properties": {
           "amount": {
@@ -23224,11 +23212,7 @@
           },
           "customer_id": {
             "type": "string",
-            "description": "The identifier for the customer",
-            "example": "cus_y3oqhf46pyzuxjbcn2giaqnb44",
-            "nullable": true,
-            "maxLength": 64,
-            "minLength": 1
+            "description": "The identifier for the customer"
           },
           "off_session": {
             "type": "boolean",
@@ -31932,6 +31916,18 @@
           "taxable",
           "exempt"
         ]
+      },
+      "TestResponse": {
+        "type": "object",
+        "required": [
+          "message"
+        ],
+        "properties": {
+          "message": {
+            "type": "string",
+            "description": "Test message"
+          }
+        }
       },
       "ThirdPartySdkSessionResponse": {
         "type": "object",

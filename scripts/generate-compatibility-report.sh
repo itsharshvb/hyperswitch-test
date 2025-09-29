@@ -52,8 +52,8 @@ count_json_issues() {
 }
 
 # Count different types of issues
-V1_BREAKING_COUNT=$(count_file_issues "$V1_BREAKING_REPORT" "error\|BREAKING")
-V2_BREAKING_COUNT=$(count_file_issues "$V2_BREAKING_REPORT" "error\|BREAKING")
+V1_BREAKING_COUNT=$(count_file_issues "$V1_BREAKING_REPORT" "error")
+V2_BREAKING_COUNT=$(count_file_issues "$V2_BREAKING_REPORT" "error")
 
 # Ensure variables are numeric
 V1_BREAKING_COUNT=${V1_BREAKING_COUNT:-0}
@@ -337,8 +337,8 @@ These issues are recommended to fix:
 EOF
         
         for version in "V1" "V2"; do
-            local report_file="$([[ $version == "V1" ]] && echo "$SPECTRAL_V1_REPORT" || echo "$SPECTRAL_V2_REPORT")"
-            local count="$([[ $version == "V1" ]] && echo "$V1_SPECTRAL_WARNINGS" || echo "$V2_SPECTRAL_WARNINGS")"
+            report_file="$([[ $version == "V1" ]] && echo "$SPECTRAL_V1_REPORT" || echo "$SPECTRAL_V2_REPORT")"
+            count="$([[ $version == "V1" ]] && echo "$V1_SPECTRAL_WARNINGS" || echo "$V2_SPECTRAL_WARNINGS")"
             
             if [[ $count -gt 0 ]] && [[ -f "$report_file" ]] && command -v jq &> /dev/null; then
                 echo "**$version API:**"

@@ -3,7 +3,7 @@
 /// Creates a customer object and stores the customer details to be reused for future payments.
 /// Incase the customer already exists in the system, this API will respond with the customer details.
 #[utoipa::path(
-    post,
+    put,
     path = "/customers",
     request_body  (
         content = CustomerRequest,
