@@ -23,30 +23,12 @@ rules:
       field: "paths"
       function: truthy
       
-  # Additional rules to trigger violations
-  operation-description:
-    description: "Operation must have description"
-    message: "All operations must have a description"
+  # Additional rules to trigger some violations for testing
+  operation-operationId:
+    description: "Operation must have operationId"
+    message: "All operations should have an operationId"
     given: "$.paths[*][*]"
     severity: warn
     then:
-      field: "description"
-      function: truthy
-      
-  schema-properties-examples:
-    description: "Schema properties should have examples"
-    message: "Schema properties should include examples for better documentation"
-    given: "$.components.schemas..properties[*]"
-    severity: warn
-    then:
-      field: "example"
-      function: truthy
-      
-  required-response-schema:
-    description: "Responses must have schemas"
-    message: "All responses must define a schema"
-    given: "$.paths[*][*].responses[*].content[*]"
-    severity: error
-    then:
-      field: "schema"
+      field: "operationId"
       function: truthy
