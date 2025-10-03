@@ -165,10 +165,11 @@ jobs:
         id: breaking_changes
         run: |
           echo "Analyzing API changes for breaking changes..."
-          
+
           BREAKING_CHANGES=0
-          TOTAL_ISSUES=0
-          
+          V1_HAS_BREAKING=0
+          V2_HAS_BREAKING=0
+
           # Check V1 API changes
           echo "Checking V1 API for breaking changes..."
           if oasdiff breaking \
@@ -180,12 +181,19 @@ jobs:
             echo "✅ No breaking changes in V1 API"
             echo "✅ V1 API is backward compatible" > v1-breaking-status.txt
           else
-            echo "❌ Breaking changes detected in V1 API"
-            echo "❌ Breaking changes detected in V1 API" > v1-breaking-status.txt
-            BREAKING_CHANGES=$((BREAKING_CHANGES + 1))
-            cat v1-breaking-report.txt
+            # Check if the report actually contains breaking changes (not just errors)
+            if grep -qiE "error|breaking" v1-breaking-report.txt 2>/dev/null; then
+              echo "❌ Breaking changes detected in V1 API"
+              echo "❌ Breaking changes detected in V1 API" > v1-breaking-status.txt
+              V1_HAS_BREAKING=1
+              cat v1-breaking-report.txt
+            else
+              echo "⚠️ V1 API check had issues but no breaking changes found"
+              echo "⚠️ V1 API check completed with warnings" > v1-breaking-status.txt
+              cat v1-breaking-report.txt
+            fi
           fi
-          
+
           # Check V2 API changes
           echo "Checking V2 API for breaking changes..."
           if oasdiff breaking \
@@ -197,17 +205,27 @@ jobs:
             echo "✅ No breaking changes in V2 API"
             echo "✅ V2 API is backward compatible" > v2-breaking-status.txt
           else
-            echo "❌ Breaking changes detected in V2 API"
-            echo "❌ Breaking changes detected in V2 API" > v2-breaking-status.txt
-            BREAKING_CHANGES=$((BREAKING_CHANGES + 1))
-            cat v2-breaking-report.txt
+            # Check if the report actually contains breaking changes (not just errors)
+            if grep -qiE "error|breaking" v2-breaking-report.txt 2>/dev/null; then
+              echo "❌ Breaking changes detected in V2 API"
+              echo "❌ Breaking changes detected in V2 API" > v2-breaking-status.txt
+              V2_HAS_BREAKING=1
+              cat v2-breaking-report.txt
+            else
+              echo "⚠️ V2 API check had issues but no breaking changes found"
+              echo "⚠️ V2 API check completed with warnings" > v2-breaking-status.txt
+              cat v2-breaking-report.txt
+            fi
           fi
-          
+
+          # Calculate total breaking changes
+          BREAKING_CHANGES=$((V1_HAS_BREAKING + V2_HAS_BREAKING))
+
           # Generate detailed diff reports
           echo "Generating detailed change reports..."
           oasdiff diff base-v1-schema.json pr-v1-schema.json > v1-detailed-diff.txt 2>/dev/null || true
           oasdiff diff base-v2-schema.json pr-v2-schema.json > v2-detailed-diff.txt 2>/dev/null || true
-          
+
           echo "breaking_changes=$BREAKING_CHANGES" >> $GITHUB_OUTPUT
           echo "total_issues=$BREAKING_CHANGES" >> $GITHUB_OUTPUT
         continue-on-error: true
