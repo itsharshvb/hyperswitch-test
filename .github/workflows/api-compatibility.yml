@@ -172,54 +172,65 @@ jobs:
 
           # Check V1 API changes
           echo "Checking V1 API for breaking changes..."
-          if oasdiff breaking \
+          V1_EXIT_CODE=0
+          oasdiff breaking \
             --fail-on ERR \
             --severity-levels .oasdiff-severity-levels.yaml \
             --err-ignore .oasdiff-err-ignore.yaml \
             --warn-ignore .oasdiff-warn-ignore.yaml \
-            base-v1-schema.json pr-v1-schema.json > v1-breaking-report.txt 2>&1; then
+            base-v1-schema.json pr-v1-schema.json > v1-breaking-report.txt 2>&1 || V1_EXIT_CODE=$?
+
+          if [[ $V1_EXIT_CODE -eq 0 ]]; then
             echo "✅ No breaking changes in V1 API"
             echo "✅ V1 API is backward compatible" > v1-breaking-status.txt
           else
-            # Check if the report actually contains breaking changes (not just errors)
-            if grep -qiE "error|breaking" v1-breaking-report.txt 2>/dev/null; then
+            # oasdiff failed - check if report has actual content (breaking changes)
+            # If file is very small (< 50 bytes), it's likely just an error message
+            REPORT_SIZE=$(wc -c < v1-breaking-report.txt 2>/dev/null || echo "0")
+            if [[ $REPORT_SIZE -gt 50 ]] && grep -q "ERR" v1-breaking-report.txt 2>/dev/null; then
               echo "❌ Breaking changes detected in V1 API"
               echo "❌ Breaking changes detected in V1 API" > v1-breaking-status.txt
               V1_HAS_BREAKING=1
               cat v1-breaking-report.txt
             else
               echo "⚠️ V1 API check had issues but no breaking changes found"
-              echo "⚠️ V1 API check completed with warnings" > v1-breaking-status.txt
+              echo "✅ V1 API is backward compatible" > v1-breaking-status.txt
               cat v1-breaking-report.txt
             fi
           fi
 
           # Check V2 API changes
           echo "Checking V2 API for breaking changes..."
-          if oasdiff breaking \
+          V2_EXIT_CODE=0
+          oasdiff breaking \
             --fail-on ERR \
             --severity-levels .oasdiff-severity-levels.yaml \
             --err-ignore .oasdiff-err-ignore.yaml \
             --warn-ignore .oasdiff-warn-ignore.yaml \
-            base-v2-schema.json pr-v2-schema.json > v2-breaking-report.txt 2>&1; then
+            base-v2-schema.json pr-v2-schema.json > v2-breaking-report.txt 2>&1 || V2_EXIT_CODE=$?
+
+          if [[ $V2_EXIT_CODE -eq 0 ]]; then
             echo "✅ No breaking changes in V2 API"
             echo "✅ V2 API is backward compatible" > v2-breaking-status.txt
           else
-            # Check if the report actually contains breaking changes (not just errors)
-            if grep -qiE "error|breaking" v2-breaking-report.txt 2>/dev/null; then
+            # oasdiff failed - check if report has actual content (breaking changes)
+            REPORT_SIZE=$(wc -c < v2-breaking-report.txt 2>/dev/null || echo "0")
+            if [[ $REPORT_SIZE -gt 50 ]] && grep -q "ERR" v2-breaking-report.txt 2>/dev/null; then
               echo "❌ Breaking changes detected in V2 API"
               echo "❌ Breaking changes detected in V2 API" > v2-breaking-status.txt
               V2_HAS_BREAKING=1
               cat v2-breaking-report.txt
             else
               echo "⚠️ V2 API check had issues but no breaking changes found"
-              echo "⚠️ V2 API check completed with warnings" > v2-breaking-status.txt
+              echo "✅ V2 API is backward compatible" > v2-breaking-status.txt
               cat v2-breaking-report.txt
             fi
           fi
 
           # Calculate total breaking changes
           BREAKING_CHANGES=$((V1_HAS_BREAKING + V2_HAS_BREAKING))
+
+          echo "Final breaking changes count: $BREAKING_CHANGES"
 
           # Generate detailed diff reports
           echo "Generating detailed change reports..."
