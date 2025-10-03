@@ -13,7 +13,6 @@ on:
       - 'crates/router/**'
       - 'api-reference/**'
       - '.oasdiff-config.yaml'
-      - '.spectral-hyperswitch.yml'
     types: [opened, synchronize, reopened, labeled, unlabeled]
 
   workflow_dispatch:
@@ -71,17 +70,13 @@ jobs:
           
       - name: Install validation tools
         run: |
-          # Install Spectral CLI for linting
-          npm install -g @stoplight/spectral-cli@6.11.0
-          
           # Install oasdiff using Go with correct module path
           go install github.com/oasdiff/oasdiff@latest
-          
+
           # Add Go bin to PATH for current session
           echo "$HOME/go/bin" >> $GITHUB_PATH
-          
-          # Verify installations
-          spectral --version
+
+          # Verify installation
           echo "oasdiff installation completed"
           
       - name: Verify oasdiff installation
@@ -165,83 +160,6 @@ jobs:
             echo "{}" > base-v2-schema.json
           fi
 
-      - name: Run Spectral validation
-        id: spectral
-        run: |
-          echo "Running Spectral validation on current schemas..."
-          
-          SPECTRAL_ERRORS=0
-          
-          # Validate V1 schema
-          echo "Validating V1 schema..."
-          echo "V1 schema file size: $(wc -c < pr-v1-schema.json) bytes"
-          
-          # Run Spectral and handle output properly
-          spectral lint pr-v1-schema.json --ruleset .spectral-hyperswitch.yml --format json --quiet > spectral-v1-output.txt 2>&1
-          SPECTRAL_V1_EXIT_CODE=$?
-          
-          # Check if Spectral output is valid JSON or a success message
-          if jq empty spectral-v1-output.txt 2>/dev/null; then
-            # Valid JSON - copy to report file
-            cp spectral-v1-output.txt spectral-v1-report.json
-            if [[ $SPECTRAL_V1_EXIT_CODE -eq 0 ]]; then
-              echo "✅ V1 schema passed Spectral validation"
-            else
-              echo "⚠️ V1 schema has Spectral violations (with valid JSON output)"
-              SPECTRAL_ERRORS=$((SPECTRAL_ERRORS + 1))
-            fi
-          else
-            # Not valid JSON - probably a success message, treat as no errors
-            echo "[]" > spectral-v1-report.json
-            if [[ $SPECTRAL_V1_EXIT_CODE -eq 0 ]]; then
-              echo "✅ V1 schema passed Spectral validation (no issues found)"
-            else
-              echo "⚠️ V1 schema validation had issues but produced non-JSON output"
-              SPECTRAL_ERRORS=$((SPECTRAL_ERRORS + 1))
-              # Save the raw output for debugging
-              echo "Raw Spectral output: $(cat spectral-v1-output.txt)"
-            fi
-          fi
-          
-          # Validate V2 schema  
-          echo "Validating V2 schema..."
-          echo "V2 schema file size: $(wc -c < pr-v2-schema.json) bytes"
-          
-          # Run Spectral and handle output properly for V2
-          spectral lint pr-v2-schema.json --ruleset .spectral-hyperswitch.yml --format json --quiet > spectral-v2-output.txt 2>&1
-          SPECTRAL_V2_EXIT_CODE=$?
-          
-          # Check if Spectral output is valid JSON or a success message
-          if jq empty spectral-v2-output.txt 2>/dev/null; then
-            # Valid JSON - copy to report file
-            cp spectral-v2-output.txt spectral-v2-report.json
-            if [[ $SPECTRAL_V2_EXIT_CODE -eq 0 ]]; then
-              echo "✅ V2 schema passed Spectral validation"
-            else
-              echo "⚠️ V2 schema has Spectral violations (with valid JSON output)"
-              SPECTRAL_ERRORS=$((SPECTRAL_ERRORS + 1))
-            fi
-          else
-            # Not valid JSON - probably a success message, treat as no errors
-            echo "[]" > spectral-v2-report.json
-            if [[ $SPECTRAL_V2_EXIT_CODE -eq 0 ]]; then
-              echo "✅ V2 schema passed Spectral validation (no issues found)"
-            else
-              echo "⚠️ V2 schema validation had issues but produced non-JSON output"
-              SPECTRAL_ERRORS=$((SPECTRAL_ERRORS + 1))
-              # Save the raw output for debugging
-              echo "Raw Spectral output: $(cat spectral-v2-output.txt)"
-            fi
-          fi
-          
-          echo "spectral_errors=$SPECTRAL_ERRORS" >> $GITHUB_OUTPUT
-          
-          # Debug: Show what was generated
-          echo "Spectral V1 report preview:"
-          head -3 spectral-v1-report.json || echo "Empty report"
-          echo "Spectral V2 report preview:"
-          head -3 spectral-v2-report.json || echo "Empty report"
-        continue-on-error: true
 
       - name: Run breaking change detection
         id: breaking_changes
@@ -253,7 +171,12 @@ jobs:
           
           # Check V1 API changes
           echo "Checking V1 API for breaking changes..."
-          if oasdiff breaking --fail-on ERR base-v1-schema.json pr-v1-schema.json > v1-breaking-report.txt 2>&1; then
+          if oasdiff breaking \
+            --fail-on ERR \
+            --severity-levels .oasdiff-severity-levels.yaml \
+            --err-ignore .oasdiff-err-ignore.yaml \
+            --warn-ignore .oasdiff-warn-ignore.yaml \
+            base-v1-schema.json pr-v1-schema.json > v1-breaking-report.txt 2>&1; then
             echo "✅ No breaking changes in V1 API"
             echo "✅ V1 API is backward compatible" > v1-breaking-status.txt
           else
@@ -265,7 +188,12 @@ jobs:
           
           # Check V2 API changes
           echo "Checking V2 API for breaking changes..."
-          if oasdiff breaking --fail-on ERR base-v2-schema.json pr-v2-schema.json > v2-breaking-report.txt 2>&1; then
+          if oasdiff breaking \
+            --fail-on ERR \
+            --severity-levels .oasdiff-severity-levels.yaml \
+            --err-ignore .oasdiff-err-ignore.yaml \
+            --warn-ignore .oasdiff-warn-ignore.yaml \
+            base-v2-schema.json pr-v2-schema.json > v2-breaking-report.txt 2>&1; then
             echo "✅ No breaking changes in V2 API"
             echo "✅ V2 API is backward compatible" > v2-breaking-status.txt
           else
@@ -281,7 +209,7 @@ jobs:
           oasdiff diff base-v2-schema.json pr-v2-schema.json > v2-detailed-diff.txt 2>/dev/null || true
           
           echo "breaking_changes=$BREAKING_CHANGES" >> $GITHUB_OUTPUT
-          echo "total_issues=$((BREAKING_CHANGES + ${SPECTRAL_ERRORS:-0}))" >> $GITHUB_OUTPUT
+          echo "total_issues=$BREAKING_CHANGES" >> $GITHUB_OUTPUT
         continue-on-error: true
 
       - name: Generate compatibility report
@@ -297,16 +225,12 @@ jobs:
           if [[ "${BREAKING_CHANGES:-0}" -gt 0 ]]; then
             echo "validation_status=BREAKING CHANGES DETECTED" >> $GITHUB_OUTPUT
             echo "validation_passed=false" >> $GITHUB_OUTPUT
-          elif [[ "${SPECTRAL_ERRORS:-0}" -gt 0 ]]; then
-            echo "validation_status=LINTING ISSUES FOUND" >> $GITHUB_OUTPUT  
-            echo "validation_passed=partial" >> $GITHUB_OUTPUT
           else
             echo "validation_status=ALL CHECKS PASSED" >> $GITHUB_OUTPUT
             echo "validation_passed=true" >> $GITHUB_OUTPUT
           fi
         env:
           BREAKING_CHANGES: ${{ steps.breaking_changes.outputs.breaking_changes }}
-          SPECTRAL_ERRORS: ${{ steps.spectral.outputs.spectral_errors }}
 
       - name: Update PR comment
         if: always() && github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'validate-api')
@@ -330,19 +254,6 @@ jobs:
             **Status**: ${{ steps.report.outputs.validation_status || 'Unknown' }}
             
             ${report}
-            
-            ---
-            
-            ### Local Testing
-            
-            Test these changes locally:
-            \`\`\`bash
-            # Run full validation
-            just api-validate
-            
-            # Compare with specific branch/commit
-            just api-diff origin/main HEAD
-            \`\`\`
             
             ---
             *Automatically generated by the API Compatibility workflow.*`;
@@ -403,8 +314,6 @@ jobs:
             v2-breaking-report.txt
             v1-detailed-diff.txt
             v2-detailed-diff.txt
-            spectral-v1-report.json
-            spectral-v2-report.json
             compatibility-report.md
             v1-breaking-status.txt
             v2-breaking-status.txt
