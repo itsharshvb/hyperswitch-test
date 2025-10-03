@@ -308,7 +308,7 @@ jobs:
             }
 
       - name: Fail if breaking changes detected
-        if: steps.breaking_changes.outputs.breaking_changes > 0
+        if: steps.breaking_changes.outputs.breaking_changes != '0' && steps.breaking_changes.outputs.breaking_changes != ''
         run: |
           echo "::error::Breaking changes detected in API schema."
           echo "::error::Found ${{ steps.breaking_changes.outputs.breaking_changes }} breaking change(s)."
