@@ -1,19 +1,9 @@
-# oasdiff Severity Levels Configuration
-# This file defines custom severity levels for different types of breaking changes
-# Reference: https://github.com/Tufin/oasdiff
-
-# Format: rule-id: severity-level
-# Severity levels: ERR, WARN, INFO
-
-# === API Structure Changes ===
 api-path-removed-without-deprecation: ERR
 api-path-removed-before-sunset: WARN
 api-removed-without-deprecation: ERR
 api-removed-before-sunset: WARN
 api-operation-id-removed: ERR
 api-tag-removed: WARN
-
-# === Request Changes ===
 request-body-became-enum: ERR
 request-body-became-optional: INFO
 request-body-became-required: ERR
@@ -44,8 +34,6 @@ request-property-pattern-removed: INFO
 request-property-removed: ERR
 request-property-type-changed: ERR
 request-property-x-extensible-enum-value-removed: ERR
-
-# === Response Changes ===
 response-body-became-optional: ERR
 response-body-became-required: INFO
 response-discriminator-property-removed: ERR
@@ -75,8 +63,6 @@ response-property-type-changed: ERR
 response-removed: ERR
 response-status-removed: ERR
 response-status-updated: WARN
-
-# === Parameter Changes ===
 request-parameter-became-optional: INFO
 request-parameter-became-required: ERR
 request-parameter-default-value-changed: WARN
@@ -95,31 +81,20 @@ request-parameter-pattern-removed: INFO
 request-parameter-removed: ERR
 request-parameter-type-changed: ERR
 request-parameter-x-extensible-enum-value-removed: ERR
-
-# === Security Changes ===
 api-security-removed: ERR
 api-security-updated: WARN
 api-global-security-removed: ERR
 api-global-security-updated: WARN
-
-# === Schema Changes ===
 api-schema-removed: ERR
 new-required-request-header: ERR
 new-optional-request-header: INFO
-
-# === Sunset and Deprecation ===
 endpoint-deprecated: WARN
 endpoint-reactivated: INFO
 sunset-date-too-small: WARN
-
-# === Custom Hyperswitch Rules ===
-# Payment-specific breaking changes
 payment-amount-field-removed: ERR
 payment-currency-field-removed: ERR
 payment-method-enum-removed: ERR
 connector-enum-removed: WARN
 customer-field-breaking-change: ERR
-
-# API versioning changes
 api-version-removed: ERR
 api-version-changed: WARN
