@@ -13,6 +13,9 @@ on:
       - 'crates/router/**'
       - 'api-reference/**'
       - '.oasdiff-config.yaml'
+      - 'migrations/**'
+      - 'v2_migrations/**'
+      - 'v2_compatible_migrations/**'
     types: [opened, synchronize, reopened, labeled, unlabeled]
 
   workflow_dispatch:
@@ -173,11 +176,17 @@ jobs:
           # Check V1 API changes
           echo "Checking V1 API for breaking changes..."
           V1_EXIT_CODE=0
-          oasdiff breaking \
-            --fail-on ERR \
-            --severity-levels .oasdiff-severity-levels.yaml \
-            --err-ignore .oasdiff-err-ignore.yaml \
-            --warn-ignore .oasdiff-warn-ignore.yaml \
+
+          # Check if config files exist, use them if available
+          OASDIFF_ARGS="--fail-on ERR"
+          if [[ -f ".oasdiff-err-ignore.yaml" ]]; then
+            OASDIFF_ARGS="$OASDIFF_ARGS --err-ignore .oasdiff-err-ignore.yaml"
+          fi
+          if [[ -f ".oasdiff-warn-ignore.yaml" ]]; then
+            OASDIFF_ARGS="$OASDIFF_ARGS --warn-ignore .oasdiff-warn-ignore.yaml"
+          fi
+
+          oasdiff breaking $OASDIFF_ARGS \
             base-v1-schema.json pr-v1-schema.json > v1-breaking-report.txt 2>&1 || V1_EXIT_CODE=$?
 
           if [[ $V1_EXIT_CODE -eq 0 ]]; then
@@ -202,11 +211,9 @@ jobs:
           # Check V2 API changes
           echo "Checking V2 API for breaking changes..."
           V2_EXIT_CODE=0
-          oasdiff breaking \
-            --fail-on ERR \
-            --severity-levels .oasdiff-severity-levels.yaml \
-            --err-ignore .oasdiff-err-ignore.yaml \
-            --warn-ignore .oasdiff-warn-ignore.yaml \
+
+          # Reuse the same args
+          oasdiff breaking $OASDIFF_ARGS \
             base-v2-schema.json pr-v2-schema.json > v2-breaking-report.txt 2>&1 || V2_EXIT_CODE=$?
 
           if [[ $V2_EXIT_CODE -eq 0 ]]; then
@@ -346,4 +353,257 @@ jobs:
             compatibility-report.md
             v1-breaking-status.txt
             v2-breaking-status.txt
+          retention-days: 30
+
+
+#add migration check here
+  migration-compatibility-check:
+    name: Migration Breaking Change Detection
+    runs-on: ubuntu-latest
+
+    # Run on all PRs that modify migration files
+    if: github.event_name == 'pull_request'
+
+    steps:
+      - name: Checkout PR
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          token: ${{ github.token }}
+
+      - name: Fetch base branch
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: |
+          git fetch origin "$BASE_REF:$BASE_REF"
+
+      - name: Validate migrations for breaking changes
+        id: migration_check
+        run: |
+          echo "Running migration validation..."
+
+          # Make script executable
+          chmod +x ./scripts/validate-migrations.sh
+
+          # Run validation for main migrations directory
+          ./scripts/validate-migrations.sh "migrations" "origin/${{ github.event.pull_request.base.ref }}" > migration-report.txt 2>&1 || MIGRATION_EXIT_CODE=$?
+
+          # Store results
+          BREAKING_COUNT=$(cat migration-breaking-count.txt 2>/dev/null || echo "0")
+          WARNING_COUNT=$(cat migration-warning-count.txt 2>/dev/null || echo "0")
+
+          echo "breaking_changes=$BREAKING_COUNT" >> $GITHUB_OUTPUT
+          echo "warnings=$WARNING_COUNT" >> $GITHUB_OUTPUT
+
+          # Display report
+          cat migration-report.txt
+
+          # Exit with appropriate code
+          if [[ $BREAKING_COUNT -gt 0 ]]; then
+            exit 1
+          fi
+        continue-on-error: true
+
+      - name: Check v2_migrations if exists
+        id: v2_migration_check
+        run: |
+          if [[ -d "v2_migrations" ]]; then
+            echo "Running validation for v2_migrations..."
+
+            ./scripts/validate-migrations.sh "v2_migrations" "origin/${{ github.event.pull_request.base.ref }}" > v2-migration-report.txt 2>&1 || V2_EXIT_CODE=$?
+
+            V2_BREAKING_COUNT=$(cat migration-breaking-count.txt 2>/dev/null || echo "0")
+            V2_WARNING_COUNT=$(cat migration-warning-count.txt 2>/dev/null || echo "0")
+
+            echo "breaking_changes=$V2_BREAKING_COUNT" >> $GITHUB_OUTPUT
+            echo "warnings=$V2_WARNING_COUNT" >> $GITHUB_OUTPUT
+
+            cat v2-migration-report.txt
+
+            if [[ $V2_BREAKING_COUNT -gt 0 ]]; then
+              exit 1
+            fi
+          else
+            echo "v2_migrations directory not found, skipping..."
+            echo "breaking_changes=0" >> $GITHUB_OUTPUT
+            echo "warnings=0" >> $GITHUB_OUTPUT
+          fi
+        continue-on-error: true
+
+      - name: Check v2_compatible_migrations if exists
+        id: v2_compatible_migration_check
+        run: |
+          if [[ -d "v2_compatible_migrations" ]]; then
+            echo "Running validation for v2_compatible_migrations..."
+
+            ./scripts/validate-migrations.sh "v2_compatible_migrations" "origin/${{ github.event.pull_request.base.ref }}" > v2-compatible-migration-report.txt 2>&1 || V2_COMPAT_EXIT_CODE=$?
+
+            V2_COMPAT_BREAKING_COUNT=$(cat migration-breaking-count.txt 2>/dev/null || echo "0")
+            V2_COMPAT_WARNING_COUNT=$(cat migration-warning-count.txt 2>/dev/null || echo "0")
+
+            echo "breaking_changes=$V2_COMPAT_BREAKING_COUNT" >> $GITHUB_OUTPUT
+            echo "warnings=$V2_COMPAT_WARNING_COUNT" >> $GITHUB_OUTPUT
+
+            cat v2-compatible-migration-report.txt
+
+            if [[ $V2_COMPAT_BREAKING_COUNT -gt 0 ]]; then
+              exit 1
+            fi
+          else
+            echo "v2_compatible_migrations directory not found, skipping..."
+            echo "breaking_changes=0" >> $GITHUB_OUTPUT
+            echo "warnings=0" >> $GITHUB_OUTPUT
+          fi
+        continue-on-error: true
+
+      - name: Generate migration compatibility report
+        id: migration_report
+        run: |
+          # Calculate total breaking changes and warnings
+          TOTAL_BREAKING=$((
+            ${MIGRATION_BREAKING:-0} +
+            ${V2_MIGRATION_BREAKING:-0} +
+            ${V2_COMPAT_MIGRATION_BREAKING:-0}
+          ))
+
+          TOTAL_WARNINGS=$((
+            ${MIGRATION_WARNINGS:-0} +
+            ${V2_MIGRATION_WARNINGS:-0} +
+            ${V2_COMPAT_MIGRATION_WARNINGS:-0}
+          ))
+
+          # Create comprehensive report
+          cat > migration-compatibility-report.md <<'EOF'
+          ### 🗄️ Database Migration Analysis
+
+          #### Summary
+          - **Breaking Changes**: ${TOTAL_BREAKING}
+          - **Warnings**: ${TOTAL_WARNINGS}
+
+          #### Main Migrations
+          $(cat migration-report.txt 2>/dev/null || echo "No changes detected")
+
+          #### V2 Migrations
+          $(cat v2-migration-report.txt 2>/dev/null || echo "No v2_migrations directory found")
+
+          #### V2 Compatible Migrations
+          $(cat v2-compatible-migration-report.txt 2>/dev/null || echo "No v2_compatible_migrations directory found")
+
+          ---
+
+          #### ⚠️ Migration Best Practices
+          - ✅ Use `ADD COLUMN` instead of modifying existing columns
+          - ✅ Make new columns nullable or provide defaults
+          - ✅ Create new tables/indexes before removing old ones
+          - ✅ Test migrations with production-like data volumes
+          - ✅ Ensure down migrations can rollback changes
+          - ❌ Avoid `DROP TABLE`, `DROP COLUMN` in production migrations
+          - ❌ Avoid `ALTER COLUMN TYPE` that may cause data loss
+          - ❌ Avoid removing enum values that are in use
+          EOF
+
+          # Process the template
+          eval "echo \"$(cat migration-compatibility-report.md)\"" > migration-compatibility-report.md
+
+          echo "total_breaking=$TOTAL_BREAKING" >> $GITHUB_OUTPUT
+          echo "total_warnings=$TOTAL_WARNINGS" >> $GITHUB_OUTPUT
+
+          if [[ $TOTAL_BREAKING -gt 0 ]]; then
+            echo "validation_status=BREAKING CHANGES DETECTED" >> $GITHUB_OUTPUT
+          elif [[ $TOTAL_WARNINGS -gt 0 ]]; then
+            echo "validation_status=WARNINGS FOUND" >> $GITHUB_OUTPUT
+          else
+            echo "validation_status=ALL CHECKS PASSED" >> $GITHUB_OUTPUT
+          fi
+        env:
+          MIGRATION_BREAKING: ${{ steps.migration_check.outputs.breaking_changes }}
+          MIGRATION_WARNINGS: ${{ steps.migration_check.outputs.warnings }}
+          V2_MIGRATION_BREAKING: ${{ steps.v2_migration_check.outputs.breaking_changes }}
+          V2_MIGRATION_WARNINGS: ${{ steps.v2_migration_check.outputs.warnings }}
+          V2_COMPAT_MIGRATION_BREAKING: ${{ steps.v2_compatible_migration_check.outputs.breaking_changes }}
+          V2_COMPAT_MIGRATION_WARNINGS: ${{ steps.v2_compatible_migration_check.outputs.warnings }}
+
+      - name: Update PR comment with migration report
+        if: always() && github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'validate-api')
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ github.token }}
+          script: |
+            const fs = require('fs');
+
+            // Read the migration compatibility report
+            let report = '';
+            if (fs.existsSync('migration-compatibility-report.md')) {
+              report = fs.readFileSync('migration-compatibility-report.md', 'utf8');
+            } else {
+              report = 'Could not generate migration compatibility report. Please check the workflow logs.';
+            }
+
+            // Create the PR comment body
+            const commentBody = `## Migration Compatibility Report
+
+            **Status**: ${{ steps.migration_report.outputs.validation_status || 'Unknown' }}
+
+            ${report}
+
+            ---
+            *Automatically generated by the API Compatibility workflow.*`;
+
+            // Find existing migration compatibility comment
+            const comments = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const existingComment = comments.data.find(comment =>
+              comment.user.login === 'github-actions[bot]' &&
+              comment.body.includes('Migration Compatibility Report')
+            );
+
+            // Update existing comment or create new one
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existingComment.id,
+                body: commentBody
+              });
+              console.log('Updated existing migration compatibility comment');
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body: commentBody
+              });
+              console.log('Created new migration compatibility comment');
+            }
+
+      - name: Fail if migration breaking changes detected
+        if: steps.migration_report.outputs.total_breaking != '0' && steps.migration_report.outputs.total_breaking != ''
+        run: |
+          echo "::error::Breaking changes detected in database migrations."
+          echo "::error::Found ${{ steps.migration_report.outputs.total_breaking }} breaking change(s)."
+          echo "::error::Please review the migration compatibility report and consider:"
+          echo "::error::- Using additive-only migrations (ADD COLUMN, CREATE TABLE)"
+          echo "::error::- Creating a data migration plan for destructive changes"
+          echo "::error::- Coordinating with DevOps for zero-downtime deployment"
+          echo "::error::- Ensuring proper rollback migrations are in place"
+          exit 1
+
+      - name: Upload migration validation artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-validation-artifacts-${{ github.run_number }}
+          path: |
+            migration-report.txt
+            v2-migration-report.txt
+            v2-compatible-migration-report.txt
+            migration-compatibility-report.md
+            migration-breaking-count.txt
+            migration-warning-count.txt
           retention-days: 30
