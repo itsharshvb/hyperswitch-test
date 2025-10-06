@@ -5,6 +5,8 @@
 # Breaking changes include:
 # - DROP TABLE
 # - DROP COLUMN
+# - DELETE FROM
+# - TRUNCATE
 # - Data type changes (ALTER COLUMN TYPE with potential data loss)
 # - Removing enum values
 # - NOT NULL constraints on existing columns without defaults
@@ -13,8 +15,10 @@ set -e
 
 MIGRATION_DIR="${1:-migrations}"
 BASE_REF="${2:-origin/main}"
-BREAKING_CHANGES=0
-WARNINGS=0
+
+# Initialize counters as global variables
+declare -g BREAKING_CHANGES=0
+declare -g WARNINGS=0
 
 echo "====================================="
 echo "Migration Validation Report"
@@ -27,7 +31,9 @@ echo ""
 NEW_MIGRATIONS=$(git diff --name-only --diff-filter=AM "$BASE_REF"...HEAD -- "$MIGRATION_DIR/**/*.sql" 2>/dev/null || echo "")
 
 if [[ -z "$NEW_MIGRATIONS" ]]; then
-    echo "✅ No new or modified migrations detected"
+    echo "No new or modified migrations detected"
+    echo "0" > migration-breaking-count.txt
+    echo "0" > migration-warning-count.txt
     exit 0
 fi
 
@@ -40,6 +46,8 @@ BREAKING_PATTERNS=(
     "DROP COLUMN"
     "ALTER COLUMN .* DROP DEFAULT"
     "ALTER TYPE .* RENAME VALUE"
+    "DELETE FROM"
+    "TRUNCATE"
 )
 
 # Patterns that indicate warnings
@@ -47,8 +55,6 @@ WARNING_PATTERNS=(
     "ALTER COLUMN .* TYPE"
     "ALTER COLUMN .* SET NOT NULL"
     "ALTER TYPE .* DROP VALUE"
-    "DELETE FROM"
-    "TRUNCATE"
     "DROP INDEX"
     "DROP CONSTRAINT"
 )
@@ -59,13 +65,13 @@ check_file_for_patterns() {
     local content
     content=$(cat "$file")
 
-    echo "📄 Checking: $file"
+    echo "Checking: $file"
 
     # Check for breaking changes
     for pattern in "${BREAKING_PATTERNS[@]}"; do
         if echo "$content" | grep -iE "$pattern" > /dev/null 2>&1; then
-            echo "  ❌ BREAKING: Found '$pattern'"
-            ((BREAKING_CHANGES++))
+            echo "  BREAKING: Found '$pattern'"
+            BREAKING_CHANGES=$((BREAKING_CHANGES + 1))
 
             # Show the specific line
             echo "$content" | grep -inE "$pattern" | while read -r line; do
@@ -77,8 +83,8 @@ check_file_for_patterns() {
     # Check for warnings
     for pattern in "${WARNING_PATTERNS[@]}"; do
         if echo "$content" | grep -iE "$pattern" > /dev/null 2>&1; then
-            echo "  ⚠️  WARNING: Found '$pattern'"
-            ((WARNINGS++))
+            echo "  WARNING: Found '$pattern'"
+            WARNINGS=$((WARNINGS + 1))
 
             # Show the specific line
             echo "$content" | grep -inE "$pattern" | while read -r line; do
@@ -94,12 +100,12 @@ check_file_for_patterns() {
             down_content=$(cat "$down_file")
             # Check if down migration is just a placeholder
             if echo "$down_content" | grep -iE "^[[:space:]]*(--|/\*).*undo|^[[:space:]]*SELECT[[:space:]]+1[[:space:]]*;" > /dev/null; then
-                echo "  ⚠️  WARNING: Down migration appears to be a placeholder"
-                ((WARNINGS++))
+                echo "  WARNING: Down migration appears to be a placeholder"
+                WARNINGS=$((WARNINGS + 1))
             fi
         else
-            echo "  ⚠️  WARNING: Missing down.sql migration"
-            ((WARNINGS++))
+            echo "  WARNING: Missing down.sql migration"
+            WARNINGS=$((WARNINGS + 1))
         fi
     fi
 
@@ -127,7 +133,7 @@ echo "$BREAKING_CHANGES" > migration-breaking-count.txt
 echo "$WARNINGS" > migration-warning-count.txt
 
 if [[ $BREAKING_CHANGES -gt 0 ]]; then
-    echo "❌ VALIDATION FAILED: Breaking changes detected in migrations"
+    echo "VALIDATION FAILED: Breaking changes detected in migrations"
     echo ""
     echo "Breaking changes can cause:"
     echo "  - Data loss in production databases"
@@ -141,7 +147,7 @@ if [[ $BREAKING_CHANGES -gt 0 ]]; then
     echo "  - Adding proper down migrations for rollback support"
     exit 1
 elif [[ $WARNINGS -gt 0 ]]; then
-    echo "⚠️  VALIDATION PASSED WITH WARNINGS"
+    echo "VALIDATION PASSED WITH WARNINGS"
     echo ""
     echo "Please review the warnings and ensure:"
     echo "  - Type changes are backward compatible"
@@ -150,6 +156,6 @@ elif [[ $WARNINGS -gt 0 ]]; then
     echo "  - Down migrations are complete and tested"
     exit 0
 else
-    echo "✅ VALIDATION PASSED: No breaking changes detected"
+    echo "VALIDATION PASSED: No breaking changes detected"
     exit 0
 fi

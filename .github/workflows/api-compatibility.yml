@@ -379,15 +379,15 @@ jobs:
         run: |
           git fetch origin "$BASE_REF:$BASE_REF"
 
-      - name: Validate migrations for breaking changes
+      - name: Validate V1 migrations for breaking changes
         id: migration_check
         run: |
-          echo "Running migration validation..."
+          echo "Running V1 migration validation..."
 
           # Make script executable
           chmod +x ./scripts/validate-migrations.sh
 
-          # Run validation for main migrations directory
+          # Run validation for V1 migrations directory
           ./scripts/validate-migrations.sh "migrations" "origin/${{ github.event.pull_request.base.ref }}" > migration-report.txt 2>&1 || MIGRATION_EXIT_CODE=$?
 
           # Store results
@@ -406,11 +406,11 @@ jobs:
           fi
         continue-on-error: true
 
-      - name: Check v2_migrations if exists
+      - name: Validate V2 migrations if exists
         id: v2_migration_check
         run: |
           if [[ -d "v2_migrations" ]]; then
-            echo "Running validation for v2_migrations..."
+            echo "Running V2 migration validation..."
 
             ./scripts/validate-migrations.sh "v2_migrations" "origin/${{ github.event.pull_request.base.ref }}" > v2-migration-report.txt 2>&1 || V2_EXIT_CODE=$?
 
@@ -432,11 +432,11 @@ jobs:
           fi
         continue-on-error: true
 
-      - name: Check v2_compatible_migrations if exists
+      - name: Validate V2 compatible migrations if exists
         id: v2_compatible_migration_check
         run: |
           if [[ -d "v2_compatible_migrations" ]]; then
-            echo "Running validation for v2_compatible_migrations..."
+            echo "Running V2 compatible migration validation..."
 
             ./scripts/validate-migrations.sh "v2_compatible_migrations" "origin/${{ github.event.pull_request.base.ref }}" > v2-compatible-migration-report.txt 2>&1 || V2_COMPAT_EXIT_CODE=$?
 
@@ -476,32 +476,20 @@ jobs:
 
           # Create comprehensive report
           cat > migration-compatibility-report.md <<'EOF'
-          ### 🗄️ Database Migration Analysis
+          ### Database Migration Analysis
 
           #### Summary
           - **Breaking Changes**: ${TOTAL_BREAKING}
           - **Warnings**: ${TOTAL_WARNINGS}
 
-          #### Main Migrations
+          #### V1 Migrations
           $(cat migration-report.txt 2>/dev/null || echo "No changes detected")
 
           #### V2 Migrations
-          $(cat v2-migration-report.txt 2>/dev/null || echo "No v2_migrations directory found")
+          $(cat v2-migration-report.txt 2>/dev/null || echo "No changes detected")
 
           #### V2 Compatible Migrations
-          $(cat v2-compatible-migration-report.txt 2>/dev/null || echo "No v2_compatible_migrations directory found")
-
-          ---
-
-          #### ⚠️ Migration Best Practices
-          - ✅ Use `ADD COLUMN` instead of modifying existing columns
-          - ✅ Make new columns nullable or provide defaults
-          - ✅ Create new tables/indexes before removing old ones
-          - ✅ Test migrations with production-like data volumes
-          - ✅ Ensure down migrations can rollback changes
-          - ❌ Avoid `DROP TABLE`, `DROP COLUMN` in production migrations
-          - ❌ Avoid `ALTER COLUMN TYPE` that may cause data loss
-          - ❌ Avoid removing enum values that are in use
+          $(cat v2-compatible-migration-report.txt 2>/dev/null || echo "No changes detected")
           EOF
 
           # Process the template
