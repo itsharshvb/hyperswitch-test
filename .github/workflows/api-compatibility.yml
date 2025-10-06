@@ -413,6 +413,15 @@ jobs:
           path: migration-artifacts
         continue-on-error: true
 
+      - name: Debug - List downloaded files
+        run: |
+          echo "=== API Artifacts ==="
+          ls -la api-artifacts/ || echo "No api-artifacts directory"
+          echo ""
+          echo "=== Migration Artifacts ==="
+          ls -la migration-artifacts/ || echo "No migration-artifacts directory"
+        continue-on-error: true
+
       - name: Update PR with combined comment
         uses: actions/github-script@v7
         with:
@@ -423,16 +432,22 @@ jobs:
             // Read API compatibility report
             let apiReport = '';
             try {
+              console.log('Attempting to read API report from: api-artifacts/compatibility-report.md');
               apiReport = fs.readFileSync('api-artifacts/compatibility-report.md', 'utf8');
+              console.log('Successfully read API report, length:', apiReport.length);
             } catch (e) {
+              console.error('Failed to read API report:', e.message);
               apiReport = 'Could not generate API compatibility report. Please check the workflow logs.';
             }
 
             // Read migration compatibility report
             let migrationReport = '';
             try {
+              console.log('Attempting to read migration report from: migration-artifacts/migration-compatibility-report.md');
               migrationReport = fs.readFileSync('migration-artifacts/migration-compatibility-report.md', 'utf8');
+              console.log('Successfully read migration report, length:', migrationReport.length);
             } catch (e) {
+              console.error('Failed to read migration report:', e.message);
               migrationReport = 'Could not generate migration compatibility report. Please check the workflow logs.';
             }
 
