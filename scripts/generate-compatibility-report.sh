@@ -33,8 +33,8 @@ count_file_issues() {
 
 
 # Count different types of issues - count unique error lines starting with "error"
-V1_BREAKING_COUNT=$(grep -c "^error " "$V1_BREAKING_REPORT" 2>/dev/null || echo "0")
-V2_BREAKING_COUNT=$(grep -c "^error " "$V2_BREAKING_REPORT" 2>/dev/null || echo "0")
+V1_BREAKING_COUNT=$(grep -c "^error " "$V1_BREAKING_REPORT" 2>/dev/null || echo 0)
+V2_BREAKING_COUNT=$(grep -c "^error " "$V2_BREAKING_REPORT" 2>/dev/null || echo 0)
 
 # Ensure variables are numeric
 V1_BREAKING_COUNT=${V1_BREAKING_COUNT:-0}
@@ -51,10 +51,23 @@ V2_NEW_ENDPOINTS=${V2_NEW_ENDPOINTS:-0}
 TOTAL_NEW_ENDPOINTS=$((V1_NEW_ENDPOINTS + V2_NEW_ENDPOINTS))
 
 # Check for removed endpoints - use multiple patterns to catch different formats
-V1_REMOVED_ENDPOINTS=$(grep -c "api-path-removed\|deleted.*path\|removed.*endpoint" "$V1_BREAKING_REPORT" "$V1_DETAILED_DIFF" 2>/dev/null || echo "0")
-V2_REMOVED_ENDPOINTS=$(grep -c "api-path-removed\|deleted.*path\|removed.*endpoint" "$V2_BREAKING_REPORT" "$V2_DETAILED_DIFF" 2>/dev/null || echo "0")
-V1_REMOVED_ENDPOINTS=${V1_REMOVED_ENDPOINTS:-0}
-V2_REMOVED_ENDPOINTS=${V2_REMOVED_ENDPOINTS:-0}
+# Count from each file separately and sum them
+V1_REMOVED_ENDPOINTS=0
+if [[ -f "$V1_BREAKING_REPORT" ]]; then
+    V1_REMOVED_ENDPOINTS=$((V1_REMOVED_ENDPOINTS + $(grep -c "api-path-removed\|deleted.*path\|removed.*endpoint" "$V1_BREAKING_REPORT" 2>/dev/null || echo 0)))
+fi
+if [[ -f "$V1_DETAILED_DIFF" ]]; then
+    V1_REMOVED_ENDPOINTS=$((V1_REMOVED_ENDPOINTS + $(grep -c "deleted.*path\|removed.*endpoint" "$V1_DETAILED_DIFF" 2>/dev/null || echo 0)))
+fi
+
+V2_REMOVED_ENDPOINTS=0
+if [[ -f "$V2_BREAKING_REPORT" ]]; then
+    V2_REMOVED_ENDPOINTS=$((V2_REMOVED_ENDPOINTS + $(grep -c "api-path-removed\|deleted.*path\|removed.*endpoint" "$V2_BREAKING_REPORT" 2>/dev/null || echo 0)))
+fi
+if [[ -f "$V2_DETAILED_DIFF" ]]; then
+    V2_REMOVED_ENDPOINTS=$((V2_REMOVED_ENDPOINTS + $(grep -c "deleted.*path\|removed.*endpoint" "$V2_DETAILED_DIFF" 2>/dev/null || echo 0)))
+fi
+
 TOTAL_REMOVED_ENDPOINTS=$((V1_REMOVED_ENDPOINTS + V2_REMOVED_ENDPOINTS))
 
 V1_MODIFIED_ENDPOINTS=$(count_file_issues "$V1_DETAILED_DIFF" "modified.*path")
