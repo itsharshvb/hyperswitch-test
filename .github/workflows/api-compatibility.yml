@@ -494,4 +494,5 @@ jobs:
                 body: commentBody
               });
               console.log('Created new compatibility comment');
+
             }
