@@ -219,10 +219,10 @@ jobs:
           # Use enhanced report generation script
           chmod +x ./scripts/generate-compatibility-report.sh
           ./scripts/generate-compatibility-report.sh > compatibility-report.md
-          
+
           # Set output variables
           echo "report_generated=true" >> $GITHUB_OUTPUT
-          
+
           if [[ "${BREAKING_CHANGES:-0}" -gt 0 ]]; then
             echo "validation_status=BREAKING CHANGES DETECTED" >> $GITHUB_OUTPUT
             echo "validation_passed=false" >> $GITHUB_OUTPUT
@@ -233,8 +233,15 @@ jobs:
         env:
           BREAKING_CHANGES: ${{ steps.breaking_changes.outputs.breaking_changes }}
 
-      # Disabled - now using combined comment in update-combined-pr-comment job
-      # Old PR comment step removed - see update-combined-pr-comment job instead
+      - name: Display API Compatibility Report
+        if: always()
+        run: |
+          echo "=========================================="
+          echo "API COMPATIBILITY REPORT"
+          echo "=========================================="
+          cat compatibility-report.md || echo "Report file not found"
+          echo ""
+          echo "=========================================="
 
       - name: Fail if breaking changes detected
         if: steps.breaking_changes.outputs.breaking_changes > 0
@@ -383,129 +390,19 @@ jobs:
             migration-warning-count.txt
           retention-days: 30
 
+      - name: Display Migration Compatibility Report
+        if: always()
+        run: |
+          echo "=========================================="
+          echo "MIGRATION COMPATIBILITY REPORT"
+          echo "=========================================="
+          cat migration-compatibility-report.md || echo "Report file not found"
+          echo ""
+          echo "=========================================="
+
       - name: Fail if migration breaking changes detected
         if: steps.migration_report.outputs.total_breaking != '0' && steps.migration_report.outputs.total_breaking != ''
         run: |
           echo "::error::Breaking changes detected in database migrations."
           echo "::error::Found ${{ steps.migration_report.outputs.total_breaking }} breaking change(s)."
           exit 1
-
-  update-combined-pr-comment:
-    name: Update PR Comment with Combined Report
-    runs-on: ubuntu-latest
-    needs: [api-compatibility-check, migration-compatibility-check]
-    if: always() && github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'validate-api')
-
-    steps:
-      - name: Download API artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: api-validation-artifacts-${{ github.run_number }}
-          path: api-artifacts
-        continue-on-error: true
-
-      - name: Download migration artifacts
-        uses: actions/download-artifact@v4
-        with:
-          name: migration-validation-artifacts-${{ github.run_number }}
-          path: migration-artifacts
-        continue-on-error: true
-
-      - name: Debug - List downloaded files
-        run: |
-          echo "=== API Artifacts ==="
-          ls -la api-artifacts/ || echo "No api-artifacts directory"
-          echo ""
-          echo "=== Migration Artifacts ==="
-          ls -la migration-artifacts/ || echo "No migration-artifacts directory"
-        continue-on-error: true
-
-      - name: Update PR with combined comment
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ github.token }}
-          script: |
-            const fs = require('fs');
-
-            // Read API compatibility report
-            let apiReport = '';
-            try {
-              console.log('Attempting to read API report from: api-artifacts/compatibility-report.md');
-              apiReport = fs.readFileSync('api-artifacts/compatibility-report.md', 'utf8');
-              console.log('Successfully read API report, length:', apiReport.length);
-            } catch (e) {
-              console.error('Failed to read API report:', e.message);
-              apiReport = 'Could not generate API compatibility report. Please check the workflow logs.';
-            }
-
-            // Read migration compatibility report
-            let migrationReport = '';
-            try {
-              console.log('Attempting to read migration report from: migration-artifacts/migration-compatibility-report.md');
-              migrationReport = fs.readFileSync('migration-artifacts/migration-compatibility-report.md', 'utf8');
-              console.log('Successfully read migration report, length:', migrationReport.length);
-            } catch (e) {
-              console.error('Failed to read migration report:', e.message);
-              migrationReport = 'Could not generate migration compatibility report. Please check the workflow logs.';
-            }
-
-            // Determine overall status
-            const apiPassed = !apiReport.includes('BREAKING CHANGES DETECTED');
-            const migrationPassed = !migrationReport.includes('BREAKING CHANGES DETECTED');
-
-            let overallStatus = 'ALL CHECKS PASSED ';
-            if (!apiPassed || !migrationPassed) {
-              overallStatus = 'BREAKING CHANGES DETECTED ';
-            }
-
-            // Create combined PR comment
-            const commentBody = `## API & Database Compatibility Report
-
-            **Overall Status**: ${overallStatus}
-
-            ---
-
-            ### API Compatibility
-
-            ${apiReport}
-
-            ---
-
-            ### Database Migration Compatibility
-
-            ${migrationReport}
-
-            ---
-            *Automatically generated by the API & Migration Compatibility workflow.*`;
-
-            // Find and update/create comment
-            const comments = await github.rest.issues.listComments({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-            });
-
-            const existingComment = comments.data.find(comment =>
-              comment.user.login === 'github-actions[bot]' &&
-              (comment.body.includes('API & Database Compatibility Report') ||
-               comment.body.includes('API Compatibility Report'))
-            );
-
-            if (existingComment) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: existingComment.id,
-                body: commentBody
-              });
-              console.log('Updated existing compatibility comment');
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body: commentBody
-              });
-              console.log('Created new compatibility comment');
-
-            }
