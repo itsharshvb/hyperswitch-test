@@ -176,7 +176,6 @@ jobs:
           echo "Checking V1 API for breaking changes..."
           if oasdiff breaking \
             --fail-on ERR \
-            --severity-levels .oasdiff-severity-levels.yaml \
             --err-ignore .oasdiff-err-ignore.yaml \
             --warn-ignore .oasdiff-warn-ignore.yaml \
             base-v1-schema.json pr-v1-schema.json > v1-breaking-report.txt 2>&1; then
@@ -193,7 +192,6 @@ jobs:
           echo "Checking V2 API for breaking changes..."
           if oasdiff breaking \
             --fail-on ERR \
-            --severity-levels .oasdiff-severity-levels.yaml \
             --err-ignore .oasdiff-err-ignore.yaml \
             --warn-ignore .oasdiff-warn-ignore.yaml \
             base-v2-schema.json pr-v2-schema.json > v2-breaking-report.txt 2>&1; then
