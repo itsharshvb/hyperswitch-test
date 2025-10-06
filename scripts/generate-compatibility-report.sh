@@ -4,7 +4,9 @@
 # Enhanced compatibility report generation for Hyperswitch API validation
 # Creates structured markdown reports with detailed change analysis
 
-set -euo pipefail
+# Note: Not using -e flag because grep commands may legitimately return non-zero
+# when no matches are found, which is expected and shouldn't fail the script
+set -uo pipefail
 
 # Input files (with defaults)
 V1_BREAKING_REPORT="${V1_BREAKING_REPORT:-v1-breaking-report.txt}"
@@ -33,8 +35,9 @@ count_file_issues() {
 
 
 # Count different types of issues - count unique error lines starting with "error"
-V1_BREAKING_COUNT=$(grep -c "^error " "$V1_BREAKING_REPORT" 2>/dev/null) || V1_BREAKING_COUNT=0
-V2_BREAKING_COUNT=$(grep -c "^error " "$V2_BREAKING_REPORT" 2>/dev/null) || V2_BREAKING_COUNT=0
+# Note: oasdiff uses tabs after "error", not spaces
+V1_BREAKING_COUNT=$(grep -c "^error[[:space:]]" "$V1_BREAKING_REPORT" 2>/dev/null) || V1_BREAKING_COUNT=0
+V2_BREAKING_COUNT=$(grep -c "^error[[:space:]]" "$V2_BREAKING_REPORT" 2>/dev/null) || V2_BREAKING_COUNT=0
 
 # Ensure variables are numeric
 V1_BREAKING_COUNT=${V1_BREAKING_COUNT:-0}
