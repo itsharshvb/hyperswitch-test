@@ -101,16 +101,22 @@ EOF
 # Overall status
 if [[ $TOTAL_BREAKING -gt 0 ]]; then
     cat << EOF
-### Status: BREAKING CHANGES DETECTED
 
-This change introduces breaking changes that will affect existing API clients.
+---
+
+## Status: BREAKING CHANGES DETECTED
+
+**This change introduces breaking changes that will affect existing API clients.**
 
 EOF
 else
     cat << EOF
-### Status: ALL CHECKS PASSED
 
-This change is backward compatible.
+---
+
+## Status: ALL CHECKS PASSED
+
+**This change is backward compatible.**
 
 EOF
 fi
@@ -128,24 +134,42 @@ EOF
         cat << EOF
 ### V1 API Breaking Changes ($V1_BREAKING_COUNT issues)
 
+<details>
+<summary>Click to expand breaking changes details</summary>
+
+\`\`\`
 EOF
         if [[ -f "$V1_BREAKING_REPORT" ]] && [[ -s "$V1_BREAKING_REPORT" ]]; then
-            # Show breaking changes with proper formatting
+            # Show breaking changes in code block for better formatting
             cat "$V1_BREAKING_REPORT"
         fi
-        echo ""
+        cat << EOF
+\`\`\`
+
+</details>
+
+EOF
     fi
     
     if [[ $V2_BREAKING_COUNT -gt 0 ]]; then
         cat << EOF
 ### V2 API Breaking Changes ($V2_BREAKING_COUNT issues)
 
+<details>
+<summary>Click to expand breaking changes details</summary>
+
+\`\`\`
 EOF
         if [[ -f "$V2_BREAKING_REPORT" ]] && [[ -s "$V2_BREAKING_REPORT" ]]; then
-            # Show breaking changes with proper formatting
+            # Show breaking changes in code block for better formatting
             cat "$V2_BREAKING_REPORT"
         fi
-        echo ""
+        cat << EOF
+\`\`\`
+
+</details>
+
+EOF
     fi
 fi
 
