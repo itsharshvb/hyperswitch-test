@@ -32,9 +32,9 @@ count_file_issues() {
 }
 
 
-# Count different types of issues
-V1_BREAKING_COUNT=$(count_file_issues "$V1_BREAKING_REPORT" "error\|BREAKING")
-V2_BREAKING_COUNT=$(count_file_issues "$V2_BREAKING_REPORT" "error\|BREAKING")
+# Count different types of issues - count unique error lines starting with "error"
+V1_BREAKING_COUNT=$(grep -c "^error " "$V1_BREAKING_REPORT" 2>/dev/null || echo "0")
+V2_BREAKING_COUNT=$(grep -c "^error " "$V2_BREAKING_REPORT" 2>/dev/null || echo "0")
 
 # Ensure variables are numeric
 V1_BREAKING_COUNT=${V1_BREAKING_COUNT:-0}
@@ -42,15 +42,17 @@ V2_BREAKING_COUNT=${V2_BREAKING_COUNT:-0}
 TOTAL_BREAKING=$((V1_BREAKING_COUNT + V2_BREAKING_COUNT))
 
 
-# Count changes from detailed diffs
+# Count changes from detailed diffs and breaking reports
+# For removed endpoints, check both diff and breaking reports (api-path-removed patterns)
 V1_NEW_ENDPOINTS=$(count_file_issues "$V1_DETAILED_DIFF" "added.*path")
 V2_NEW_ENDPOINTS=$(count_file_issues "$V2_DETAILED_DIFF" "added.*path")
 V1_NEW_ENDPOINTS=${V1_NEW_ENDPOINTS:-0}
 V2_NEW_ENDPOINTS=${V2_NEW_ENDPOINTS:-0}
 TOTAL_NEW_ENDPOINTS=$((V1_NEW_ENDPOINTS + V2_NEW_ENDPOINTS))
 
-V1_REMOVED_ENDPOINTS=$(count_file_issues "$V1_DETAILED_DIFF" "deleted.*path")
-V2_REMOVED_ENDPOINTS=$(count_file_issues "$V2_DETAILED_DIFF" "deleted.*path")
+# Check for removed endpoints - use multiple patterns to catch different formats
+V1_REMOVED_ENDPOINTS=$(grep -c "api-path-removed\|deleted.*path\|removed.*endpoint" "$V1_BREAKING_REPORT" "$V1_DETAILED_DIFF" 2>/dev/null || echo "0")
+V2_REMOVED_ENDPOINTS=$(grep -c "api-path-removed\|deleted.*path\|removed.*endpoint" "$V2_BREAKING_REPORT" "$V2_DETAILED_DIFF" 2>/dev/null || echo "0")
 V1_REMOVED_ENDPOINTS=${V1_REMOVED_ENDPOINTS:-0}
 V2_REMOVED_ENDPOINTS=${V2_REMOVED_ENDPOINTS:-0}
 TOTAL_REMOVED_ENDPOINTS=$((V1_REMOVED_ENDPOINTS + V2_REMOVED_ENDPOINTS))
@@ -108,13 +110,8 @@ EOF
 
 EOF
         if [[ -f "$V1_BREAKING_REPORT" ]] && [[ -s "$V1_BREAKING_REPORT" ]]; then
-            # Show all breaking changes
-            while IFS= read -r line; do
-                # Skip empty lines
-                if [[ -n "$line" ]]; then
-                    echo "- $line"
-                fi
-            done < "$V1_BREAKING_REPORT"
+            # Show breaking changes with proper formatting
+            cat "$V1_BREAKING_REPORT"
         fi
         echo ""
     fi
@@ -125,13 +122,8 @@ EOF
 
 EOF
         if [[ -f "$V2_BREAKING_REPORT" ]] && [[ -s "$V2_BREAKING_REPORT" ]]; then
-            # Show all breaking changes
-            while IFS= read -r line; do
-                # Skip empty lines
-                if [[ -n "$line" ]]; then
-                    echo "- $line"
-                fi
-            done < "$V2_BREAKING_REPORT"
+            # Show breaking changes with proper formatting
+            cat "$V2_BREAKING_REPORT"
         fi
         echo ""
     fi
