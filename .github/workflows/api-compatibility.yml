@@ -111,13 +111,13 @@ jobs:
             # Validate JSON before copying
             if jq empty api-reference/v1/openapi_spec_v1.json 2>/dev/null; then
               cp api-reference/v1/openapi_spec_v1.json pr-v1-schema.json
-              echo "✅ V1 schema: $(wc -c < pr-v1-schema.json) bytes (valid JSON)"
+              echo "V1 schema: $(wc -c < pr-v1-schema.json) bytes (valid JSON)"
             else
-              echo "❌ V1 schema contains invalid JSON"
+              echo "V1 schema contains invalid JSON"
               echo "{}" > pr-v1-schema.json
             fi
           else
-            echo "❌ V1 schema not found at api-reference/v1/openapi_spec_v1.json"
+            echo "V1 schema not found at api-reference/v1/openapi_spec_v1.json"
             echo "{}" > pr-v1-schema.json
           fi
           
@@ -125,13 +125,13 @@ jobs:
             # Validate JSON before copying
             if jq empty api-reference/v2/openapi_spec_v2.json 2>/dev/null; then
               cp api-reference/v2/openapi_spec_v2.json pr-v2-schema.json
-              echo "✅ V2 schema: $(wc -c < pr-v2-schema.json) bytes (valid JSON)"
+              echo "V2 schema: $(wc -c < pr-v2-schema.json) bytes (valid JSON)"
             else
-              echo "❌ V2 schema contains invalid JSON"
+              echo "V2 schema contains invalid JSON"
               echo "{}" > pr-v2-schema.json
             fi
           else
-            echo "❌ V2 schema not found at api-reference/v2/openapi_spec_v2.json"
+            echo "V2 schema not found at api-reference/v2/openapi_spec_v2.json"
             echo "{}" > pr-v2-schema.json
           fi
           
@@ -150,16 +150,16 @@ jobs:
           
           # Extract schemas directly from git history (no checkout needed!)
           if git show "$BASE_SHA:api-reference/v1/openapi_spec_v1.json" > base-v1-schema.json 2>/dev/null; then
-            echo "✅ V1 schema extracted from git: $(wc -c < base-v1-schema.json) bytes"
+            echo "V1 schema extracted from git: $(wc -c < base-v1-schema.json) bytes"
           else
-            echo "⚠️ V1 schema not found in base, using empty schema"
+            echo "V1 schema not found in base, using empty schema"
             echo "{}" > base-v1-schema.json
           fi
           
           if git show "$BASE_SHA:api-reference/v2/openapi_spec_v2.json" > base-v2-schema.json 2>/dev/null; then
-            echo "✅ V2 schema extracted from git: $(wc -c < base-v2-schema.json) bytes"
+            echo "V2 schema extracted from git: $(wc -c < base-v2-schema.json) bytes"
           else
-            echo "⚠️ V2 schema not found in base, using empty schema"
+            echo "V2 schema not found in base, using empty schema"
             echo "{}" > base-v2-schema.json
           fi
 
@@ -179,11 +179,11 @@ jobs:
             --err-ignore .oasdiff-err-ignore.yaml \
             --warn-ignore .oasdiff-warn-ignore.yaml \
             base-v1-schema.json pr-v1-schema.json > v1-breaking-report.txt 2>&1; then
-            echo "✅ No breaking changes in V1 API"
-            echo "✅ V1 API is backward compatible" > v1-breaking-status.txt
+            echo "No breaking changes in V1 API"
+            echo "V1 API is backward compatible" > v1-breaking-status.txt
           else
-            echo "❌ Breaking changes detected in V1 API"
-            echo "❌ Breaking changes detected in V1 API" > v1-breaking-status.txt
+            echo "Breaking changes detected in V1 API"
+            echo "Breaking changes detected in V1 API" > v1-breaking-status.txt
             BREAKING_CHANGES=$((BREAKING_CHANGES + 1))
             cat v1-breaking-report.txt
           fi
@@ -195,11 +195,11 @@ jobs:
             --err-ignore .oasdiff-err-ignore.yaml \
             --warn-ignore .oasdiff-warn-ignore.yaml \
             base-v2-schema.json pr-v2-schema.json > v2-breaking-report.txt 2>&1; then
-            echo "✅ No breaking changes in V2 API"
-            echo "✅ V2 API is backward compatible" > v2-breaking-status.txt
+            echo "No breaking changes in V2 API"
+            echo "V2 API is backward compatible" > v2-breaking-status.txt
           else
-            echo "❌ Breaking changes detected in V2 API"
-            echo "❌ Breaking changes detected in V2 API" > v2-breaking-status.txt
+            echo "Breaking changes detected in V2 API"
+            echo "Breaking changes detected in V2 API" > v2-breaking-status.txt
             BREAKING_CHANGES=$((BREAKING_CHANGES + 1))
             cat v2-breaking-report.txt
           fi
@@ -453,9 +453,9 @@ jobs:
             const apiPassed = !apiReport.includes('BREAKING CHANGES DETECTED');
             const migrationPassed = !migrationReport.includes('BREAKING CHANGES DETECTED');
 
-            let overallStatus = 'ALL CHECKS PASSED ✅';
+            let overallStatus = 'ALL CHECKS PASSED ';
             if (!apiPassed || !migrationPassed) {
-              overallStatus = 'BREAKING CHANGES DETECTED ❌';
+              overallStatus = 'BREAKING CHANGES DETECTED ';
             }
 
             // Create combined PR comment

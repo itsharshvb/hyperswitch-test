@@ -165,8 +165,8 @@ EOF
         
         # Extract new endpoints from diff reports
         for version in "V1" "V2"; do
-            local diff_file="$([[ $version == "V1" ]] && echo "$V1_DETAILED_DIFF" || echo "$V2_DETAILED_DIFF")"
-            local count="$([[ $version == "V1" ]] && echo "$V1_NEW_ENDPOINTS" || echo "$V2_NEW_ENDPOINTS")"
+            diff_file="$([[ $version == "V1" ]] && echo "$V1_DETAILED_DIFF" || echo "$V2_DETAILED_DIFF")"
+            count="$([[ $version == "V1" ]] && echo "$V1_NEW_ENDPOINTS" || echo "$V2_NEW_ENDPOINTS")"
             
             if [[ $count -gt 0 ]] && [[ -f "$diff_file" ]]; then
                 echo "**$version API:**"
@@ -198,8 +198,8 @@ These endpoint removals will break existing clients:
 EOF
         
         for version in "V1" "V2"; do
-            local diff_file="$([[ $version == "V1" ]] && echo "$V1_DETAILED_DIFF" || echo "$V2_DETAILED_DIFF")"
-            local count="$([[ $version == "V1" ]] && echo "$V1_REMOVED_ENDPOINTS" || echo "$V2_REMOVED_ENDPOINTS")"
+            diff_file="$([[ $version == "V1" ]] && echo "$V1_DETAILED_DIFF" || echo "$V2_DETAILED_DIFF")"
+            count="$([[ $version == "V1" ]] && echo "$V1_REMOVED_ENDPOINTS" || echo "$V2_REMOVED_ENDPOINTS")"
             
             if [[ $count -gt 0 ]] && [[ -f "$diff_file" ]]; then
                 echo "**$version API:**"
@@ -230,8 +230,8 @@ These endpoints have been changed (review for breaking changes):
 EOF
         
         for version in "V1" "V2"; do
-            local diff_file="$([[ $version == "V1" ]] && echo "$V1_DETAILED_DIFF" || echo "$V2_DETAILED_DIFF")"
-            local count="$([[ $version == "V1" ]] && echo "$V1_MODIFIED_ENDPOINTS" || echo "$V2_MODIFIED_ENDPOINTS")"
+            diff_file="$([[ $version == "V1" ]] && echo "$V1_DETAILED_DIFF" || echo "$V2_DETAILED_DIFF")"
+            count="$([[ $version == "V1" ]] && echo "$V1_MODIFIED_ENDPOINTS" || echo "$V2_MODIFIED_ENDPOINTS")"
             
             if [[ $count -gt 0 ]] && [[ -f "$diff_file" ]]; then
                 echo "**$version API:**"
