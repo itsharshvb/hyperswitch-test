@@ -18,8 +18,8 @@ on:
       - 'migrations/**'
       - 'v2_migrations/**'
       - 'v2_compatible_migrations/**'
-      - '.oasdiff-*'
-      - 'scripts/validate-migrations.sh'
+      - '.github/oasdiff/**'
+      - '.github/scripts/validate-migrations.sh'
     types: [opened, synchronize, reopened]
 
   workflow_dispatch:
@@ -160,8 +160,8 @@ jobs:
           echo "Checking V1 API for breaking changes..."
           if oasdiff breaking \
             --fail-on ERR \
-            --err-ignore .oasdiff-err-ignore.yaml \
-            --warn-ignore .oasdiff-warn-ignore.yaml \
+            --err-ignore .github/oasdiff/.oasdiff-err-ignore.yaml \
+            --warn-ignore .github/oasdiff/.oasdiff-warn-ignore.yaml \
             base-v1-schema.json pr-v1-schema.json > v1-breaking-report.txt 2>&1; then
             echo "No breaking changes in V1 API"
             echo "V1 API is backward compatible" > v1-breaking-status.txt
@@ -176,8 +176,8 @@ jobs:
           echo "Checking V2 API for breaking changes..."
           if oasdiff breaking \
             --fail-on ERR \
-            --err-ignore .oasdiff-err-ignore.yaml \
-            --warn-ignore .oasdiff-warn-ignore.yaml \
+            --err-ignore .github/oasdiff/.oasdiff-err-ignore.yaml \
+            --warn-ignore .github/oasdiff/.oasdiff-warn-ignore.yaml \
             base-v2-schema.json pr-v2-schema.json > v2-breaking-report.txt 2>&1; then
             echo "No breaking changes in V2 API"
             echo "V2 API is backward compatible" > v2-breaking-status.txt
@@ -315,8 +315,8 @@ jobs:
           fi
 
           echo "Running V1 migration validation against $BASE_REF..."
-          chmod +x ./scripts/validate-migrations.sh
-          ./scripts/validate-migrations.sh "migrations" "$BASE_REF" > migration-report.txt 2>&1 || true
+          chmod +x ./.github/scripts/validate-migrations.sh
+          ./.github/scripts/validate-migrations.sh "migrations" "$BASE_REF" > migration-report.txt 2>&1 || true
 
           BREAKING_COUNT=$(cat migration-breaking-count.txt 2>/dev/null || echo "0")
           WARNING_COUNT=$(cat migration-warning-count.txt 2>/dev/null || echo "0")
@@ -339,7 +339,7 @@ jobs:
 
           if [[ -d "v2_migrations" ]]; then
             echo "Running V2 migration validation against $BASE_REF..."
-            ./scripts/validate-migrations.sh "v2_migrations" "$BASE_REF" > v2-migration-report.txt 2>&1 || true
+            ./.github/scripts/validate-migrations.sh "v2_migrations" "$BASE_REF" > v2-migration-report.txt 2>&1 || true
 
             V2_BREAKING=$(cat migration-breaking-count.txt 2>/dev/null || echo "0")
             V2_WARNING=$(cat migration-warning-count.txt 2>/dev/null || echo "0")
