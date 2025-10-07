@@ -1,162 +1,47 @@
-# oasdiff Warning Ignore Configuration
-# This file defines which warnings should be ignored in the output
-# Warnings are non-breaking changes that may still be worth noting
-
-# === Documentation Changes ===
-# Generally safe to ignore these as they don't affect API functionality
-- api-operation-summary-changed
-- api-operation-description-changed
-- response-property-description-changed
-- request-property-description-changed
-- api-operation-external-docs-changed
-- api-operation-external-docs-removed
-- api-operation-external-docs-added
-
-# === Example Changes ===
-# Examples don't affect API behavior
-- response-property-example-changed
-- request-property-example-changed
-- api-operation-example-changed
-- response-property-example-added
-- response-property-example-removed
-
-# === Default Value Changes ===
-# May want to keep these warnings in some cases
-- response-property-default-value-changed
-- request-property-default-value-changed
-- request-parameter-default-value-changed
-
-# === Deprecation Warnings ===
-# Keep these warnings visible as they indicate future breaking changes
-# - endpoint-deprecated
-# - response-property-deprecated
-# - request-property-deprecated
-
-# === Schema Format Changes ===
-# Non-functional schema changes
-- response-property-format-changed
-- request-property-format-changed
-- request-parameter-format-changed
-
-# === Constraint Relaxations ===
-# These are typically safe changes (making API more permissive)
-- response-property-max-length-increased
-- response-property-min-length-decreased
-- response-property-max-increased
-- response-property-min-decreased
-- request-parameter-max-length-increased
-- request-parameter-min-length-decreased
-- request-parameter-max-increased
-- request-parameter-min-decreased
-
-# === Optional Additions ===
-# Adding optional fields is generally safe
-- response-property-added
-- new-optional-request-header
-- request-parameter-added-optional
-
-# === API Metadata Changes ===
-# Server, contact, license info changes
-- api-servers-changed
-- api-contact-changed
-- api-license-changed
-- api-version-changed
-
-# === Tag and Category Changes ===
-# Organizational changes that don't affect functionality
-- api-tag-added
-- api-operation-tag-added
-- api-operation-tag-removed
-
-# === Security Enhancements ===
-# Adding security is generally good
-- api-security-added
-- api-global-security-added
-
-# === Response Status Additions ===
-# Adding new response statuses is generally safe
-- new-response-status-added
-
-# === Enum Value Additions ===
-# Adding enum values is safe (unless using strict validation)
-- response-property-enum-value-added
-- request-property-enum-value-added
-- request-parameter-enum-value-added
-
-# === X-Extension Changes ===
-# Custom extension changes (vendor-specific)
-- response-property-x-extension-changed
-- request-property-x-extension-changed
-- api-operation-x-extension-changed
-
-# === Content Type Additions ===
-# Adding new content types is safe
-- response-media-type-added
-- request-body-media-type-added
-
-# === Hyperswitch-Specific Warning Ignores ===
-
-# Connector-related non-breaking changes
-- connector-metadata-changed
-- connector-configuration-updated
-- payment-method-metadata-changed
-
-# Business logic updates that don't break API contracts
-- validation-rule-relaxed
-- rate-limit-increased
-- timeout-increased
-
-# Development and testing related warnings
-- test-endpoint-changes
-- debug-information-added
-- monitoring-metadata-changed
-
-# === Path-Based Warning Ignores ===
-
-# Ignore warnings for internal endpoints
-- api-operation-summary-changed:/internal/
-- api-operation-description-changed:/internal/
-
-# Ignore warnings for admin endpoints
-- response-property-added:/admin/
-- request-property-added-optional:/admin/
-
-# Ignore warnings for health check endpoints
-- api-operation-description-changed:/health
-- response-property-added:/health
-
-# === Environment-Specific Ignores ===
-
-# Development environment warnings
-- api-servers-changed:*dev*
-- api-servers-changed:*localhost*
-- api-servers-changed:*staging*
-
-# Testing environment specific
-- api-operation-example-changed:*test*
-- response-property-example-changed:*test*
-
-# === Time-Based Warning Suppressions ===
-# Suppress certain warnings during specific periods
-
-# During major version development
-# - response-property-deprecated:/.*/v2/.*/
-# - endpoint-deprecated:/.*/v2/.*/
-
-# During migration periods
-# - api-operation-description-changed  # Suppress during doc updates
-# - response-property-description-changed  # Suppress during doc updates
-
-# === Noise Reduction ===
-# Warnings that typically create too much noise
-
-# Format changes that don't affect validation
-- response-property-format-changed:date
-- response-property-format-changed:date-time
-- response-property-format-changed:email
-- response-property-format-changed:uuid
-
-# Description changes during documentation sprints
-# - api-operation-description-changed
-# - response-property-description-changed
-# - request-property-description-changed
+api-operation-summary-changed
+api-operation-description-changed
+response-property-description-changed
+request-property-description-changed
+api-operation-external-docs-changed
+api-operation-external-docs-removed
+api-operation-external-docs-added
+response-property-example-changed
+request-property-example-changed
+api-operation-example-changed
+response-property-example-added
+response-property-example-removed
+response-property-default-value-changed
+request-property-default-value-changed
+request-parameter-default-value-changed
+response-property-format-changed
+request-property-format-changed
+request-parameter-format-changed
+response-property-max-length-increased
+response-property-min-length-decreased
+response-property-max-increased
+response-property-min-decreased
+request-parameter-max-length-increased
+request-parameter-min-length-decreased
+request-parameter-max-increased
+request-parameter-min-decreased
+response-property-added
+new-optional-request-header
+request-parameter-added-optional
+api-servers-changed
+api-contact-changed
+api-license-changed
+api-version-changed
+api-tag-added
+api-operation-tag-added
+api-operation-tag-removed
+api-security-added
+api-global-security-added
+new-response-status-added
+response-property-enum-value-added
+request-property-enum-value-added
+request-parameter-enum-value-added
+response-property-x-extension-changed
+request-property-x-extension-changed
+api-operation-x-extension-changed
+response-media-type-added
+request-body-media-type-added
