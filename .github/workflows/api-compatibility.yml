@@ -431,17 +431,96 @@ jobs:
           echo "warnings=$WARNINGS" >> $GITHUB_OUTPUT
         continue-on-error: true
 
+      - name: Validate V2 compatible migrations
+        id: v2_compat_migration_check
+        run: |
+          if [[ ! -d "v2_compatible_migrations" ]]; then
+            echo "v2_compatible_migrations directory not found"
+            echo "breaking_changes=0" >> $GITHUB_OUTPUT
+            echo "warnings=0" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          BASE_REF="origin/${{ github.event.pull_request.base.ref }}"
+          MIGRATION_DIR="v2_compatible_migrations"
+
+          echo "=========================================="
+          echo "V2 COMPATIBLE MIGRATION VALIDATION"
+          echo "=========================================="
+
+          # Get new/modified migration files
+          NEW_MIGRATIONS=$(git diff --name-only --diff-filter=AM "$BASE_REF"...HEAD -- "$MIGRATION_DIR/**/*.sql" 2>/dev/null || echo "")
+
+          if [[ -z "$NEW_MIGRATIONS" ]]; then
+            echo "No new or modified migrations detected"
+            echo "breaking_changes=0" >> $GITHUB_OUTPUT
+            echo "warnings=0" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "Files to analyze:"
+          echo "$NEW_MIGRATIONS"
+          echo ""
+
+          BREAKING=0
+          WARNINGS=0
+
+          # Check each migration file
+          while IFS= read -r file; do
+            [[ -z "$file" ]] && continue
+
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "File: $file"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            CONTENT=$(cat "$file")
+
+            FILE_HAS_ISSUES=false
+
+            # Breaking patterns
+            if echo "$CONTENT" | grep -iE "(DROP TABLE|DROP COLUMN|DELETE FROM|TRUNCATE)" >/dev/null; then
+              echo "BREAKING CHANGES DETECTED:"
+              echo "$CONTENT" | grep -inE "(DROP TABLE|DROP COLUMN|DELETE FROM|TRUNCATE)" | sed 's/^/  Line /'
+              BREAKING=$((BREAKING + 1))
+              FILE_HAS_ISSUES=true
+            fi
+
+            # Warning patterns
+            if echo "$CONTENT" | grep -iE "(ALTER COLUMN .* TYPE|ALTER COLUMN .* SET NOT NULL|DROP INDEX|DROP CONSTRAINT)" >/dev/null; then
+              echo "WARNINGS:"
+              echo "$CONTENT" | grep -inE "(ALTER COLUMN .* TYPE|ALTER COLUMN .* SET NOT NULL|DROP INDEX|DROP CONSTRAINT)" | sed 's/^/  Line /'
+              WARNINGS=$((WARNINGS + 1))
+              FILE_HAS_ISSUES=true
+            fi
+
+            if [[ "$FILE_HAS_ISSUES" == "false" ]]; then
+              echo "No issues detected"
+            fi
+            echo ""
+          done <<< "$NEW_MIGRATIONS"
+
+          echo "=========================================="
+          echo "V2 Compatible Migration Summary:"
+          echo "  Breaking Changes: $BREAKING"
+          echo "  Warnings: $WARNINGS"
+          echo "=========================================="
+
+          echo "breaking_changes=$BREAKING" >> $GITHUB_OUTPUT
+          echo "warnings=$WARNINGS" >> $GITHUB_OUTPUT
+        continue-on-error: true
+
       - name: Calculate migration totals
         id: migration_report
         run: |
           TOTAL_BREAKING=$((
             ${MIGRATION_BREAKING:-0} +
-            ${V2_MIGRATION_BREAKING:-0}
+            ${V2_MIGRATION_BREAKING:-0} +
+            ${V2_COMPAT_MIGRATION_BREAKING:-0}
           ))
 
           TOTAL_WARNINGS=$((
             ${MIGRATION_WARNINGS:-0} +
-            ${V2_MIGRATION_WARNINGS:-0}
+            ${V2_MIGRATION_WARNINGS:-0} +
+            ${V2_COMPAT_MIGRATION_WARNINGS:-0}
           ))
 
           echo "total_breaking=$TOTAL_BREAKING" >> $GITHUB_OUTPUT
@@ -459,6 +538,8 @@ jobs:
           MIGRATION_WARNINGS: ${{ steps.migration_check.outputs.warnings }}
           V2_MIGRATION_BREAKING: ${{ steps.v2_migration_check.outputs.breaking_changes }}
           V2_MIGRATION_WARNINGS: ${{ steps.v2_migration_check.outputs.warnings }}
+          V2_COMPAT_MIGRATION_BREAKING: ${{ steps.v2_compat_migration_check.outputs.breaking_changes }}
+          V2_COMPAT_MIGRATION_WARNINGS: ${{ steps.v2_compat_migration_check.outputs.warnings }}
 
       - name: Display Migration Summary
         if: always()
@@ -466,8 +547,22 @@ jobs:
           echo "=========================================="
           echo "MIGRATION VALIDATION SUMMARY"
           echo "=========================================="
-          echo "Breaking Changes: ${{ steps.migration_report.outputs.total_breaking }}"
-          echo "Warnings: ${{ steps.migration_report.outputs.total_warnings }}"
+          echo ""
+          echo "V1 Migrations:"
+          echo "  Breaking Changes: ${{ steps.migration_check.outputs.breaking_changes }}"
+          echo "  Warnings: ${{ steps.migration_check.outputs.warnings }}"
+          echo ""
+          echo "V2 Migrations:"
+          echo "  Breaking Changes: ${{ steps.v2_migration_check.outputs.breaking_changes }}"
+          echo "  Warnings: ${{ steps.v2_migration_check.outputs.warnings }}"
+          echo ""
+          echo "V2 Compatible Migrations:"
+          echo "  Breaking Changes: ${{ steps.v2_compat_migration_check.outputs.breaking_changes }}"
+          echo "  Warnings: ${{ steps.v2_compat_migration_check.outputs.warnings }}"
+          echo ""
+          echo "----------------------------------------"
+          echo "Total Breaking Changes: ${{ steps.migration_report.outputs.total_breaking }}"
+          echo "Total Warnings: ${{ steps.migration_report.outputs.total_warnings }}"
           echo "Status: ${{ steps.migration_report.outputs.validation_status }}"
           echo "=========================================="
 
