@@ -15,7 +15,6 @@ on:
       - 'v2_migrations/**'
       - 'v2_compatible_migrations/**'
       - '.github/oasdiff/**'
-      - '.github/scripts/validate-migrations.sh'
     types: [opened, synchronize, reopened]
 
   workflow_dispatch:
@@ -288,38 +287,124 @@ jobs:
       - name: Validate V1 migrations
         id: migration_check
         run: |
-          echo "Running V1 migration validation..."
-          chmod +x ./.github/scripts/validate-migrations.sh
-          ./.github/scripts/validate-migrations.sh "migrations" "origin/${{ github.event.pull_request.base.ref }}" > migration-report.txt 2>&1 || true
+          BASE_REF="origin/${{ github.event.pull_request.base.ref }}"
+          MIGRATION_DIR="migrations"
 
-          BREAKING_COUNT=$(cat migration-breaking-count.txt 2>/dev/null || echo "0")
-          WARNING_COUNT=$(cat migration-warning-count.txt 2>/dev/null || echo "0")
+          echo "=========================================="
+          echo "V1 MIGRATION VALIDATION"
+          echo "=========================================="
 
-          echo "breaking_changes=$BREAKING_COUNT" >> $GITHUB_OUTPUT
-          echo "warnings=$WARNING_COUNT" >> $GITHUB_OUTPUT
+          # Get new/modified migration files
+          NEW_MIGRATIONS=$(git diff --name-only --diff-filter=AM "$BASE_REF"...HEAD -- "$MIGRATION_DIR/**/*.sql" 2>/dev/null || echo "")
 
-          cat migration-report.txt
+          if [[ -z "$NEW_MIGRATIONS" ]]; then
+            echo "No new or modified migrations detected"
+            echo "breaking_changes=0" >> $GITHUB_OUTPUT
+            echo "warnings=0" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "Analyzing migrations for breaking changes..."
+          echo ""
+
+          BREAKING=0
+          WARNINGS=0
+
+          # Check each migration file
+          while IFS= read -r file; do
+            [[ -z "$file" ]] && continue
+
+            echo "Checking: $file"
+            CONTENT=$(cat "$file")
+
+            # Breaking patterns
+            if echo "$CONTENT" | grep -iE "(DROP TABLE|DROP COLUMN|DELETE FROM|TRUNCATE)" >/dev/null; then
+              echo " BREAKING: Found dangerous operation"
+              echo "$CONTENT" | grep -inE "(DROP TABLE|DROP COLUMN|DELETE FROM|TRUNCATE)"
+              BREAKING=$((BREAKING + 1))
+            fi
+
+            # Warning patterns
+            if echo "$CONTENT" | grep -iE "(ALTER COLUMN .* TYPE|ALTER COLUMN .* SET NOT NULL|DROP INDEX|DROP CONSTRAINT)" >/dev/null; then
+              echo " WARNING: Found potentially breaking operation"
+              echo "$CONTENT" | grep -inE "(ALTER COLUMN .* TYPE|ALTER COLUMN .* SET NOT NULL|DROP INDEX|DROP CONSTRAINT)"
+              WARNINGS=$((WARNINGS + 1))
+            fi
+
+            echo ""
+          done <<< "$NEW_MIGRATIONS"
+
+          echo "=========================================="
+          echo "Summary: $BREAKING breaking, $WARNINGS warnings"
+          echo "=========================================="
+
+          echo "breaking_changes=$BREAKING" >> $GITHUB_OUTPUT
+          echo "warnings=$WARNINGS" >> $GITHUB_OUTPUT
         continue-on-error: true
 
       - name: Validate V2 migrations
         id: v2_migration_check
         run: |
-          if [[ -d "v2_migrations" ]]; then
-            echo "Running V2 migration validation..."
-            ./.github/scripts/validate-migrations.sh "v2_migrations" "origin/${{ github.event.pull_request.base.ref }}" > v2-migration-report.txt 2>&1 || true
-
-            V2_BREAKING=$(cat migration-breaking-count.txt 2>/dev/null || echo "0")
-            V2_WARNING=$(cat migration-warning-count.txt 2>/dev/null || echo "0")
-
-            echo "breaking_changes=$V2_BREAKING" >> $GITHUB_OUTPUT
-            echo "warnings=$V2_WARNING" >> $GITHUB_OUTPUT
-
-            cat v2-migration-report.txt
-          else
+          if [[ ! -d "v2_migrations" ]]; then
             echo "v2_migrations directory not found"
             echo "breaking_changes=0" >> $GITHUB_OUTPUT
             echo "warnings=0" >> $GITHUB_OUTPUT
+            exit 0
           fi
+
+          BASE_REF="origin/${{ github.event.pull_request.base.ref }}"
+          MIGRATION_DIR="v2_migrations"
+
+          echo "=========================================="
+          echo "V2 MIGRATION VALIDATION"
+          echo "=========================================="
+
+          # Get new/modified migration files
+          NEW_MIGRATIONS=$(git diff --name-only --diff-filter=AM "$BASE_REF"...HEAD -- "$MIGRATION_DIR/**/*.sql" 2>/dev/null || echo "")
+
+          if [[ -z "$NEW_MIGRATIONS" ]]; then
+            echo "No new or modified migrations detected"
+            echo "breaking_changes=0" >> $GITHUB_OUTPUT
+            echo "warnings=0" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          echo "Analyzing migrations for breaking changes..."
+          echo ""
+
+          BREAKING=0
+          WARNINGS=0
+
+          # Check each migration file
+          while IFS= read -r file; do
+            [[ -z "$file" ]] && continue
+
+            echo "Checking: $file"
+            CONTENT=$(cat "$file")
+
+            # Breaking patterns
+            if echo "$CONTENT" | grep -iE "(DROP TABLE|DROP COLUMN|DELETE FROM|TRUNCATE)" >/dev/null; then
+              echo " BREAKING: Found dangerous operation"
+              echo "$CONTENT" | grep -inE "(DROP TABLE|DROP COLUMN|DELETE FROM|TRUNCATE)"
+              BREAKING=$((BREAKING + 1))
+            fi
+
+            # Warning patterns
+            if echo "$CONTENT" | grep -iE "(ALTER COLUMN .* TYPE|ALTER COLUMN .* SET NOT NULL|DROP INDEX|DROP CONSTRAINT)" >/dev/null; then
+              echo " WARNING: Found potentially breaking operation"
+              echo "$CONTENT" | grep -inE "(ALTER COLUMN .* TYPE|ALTER COLUMN .* SET NOT NULL|DROP INDEX|DROP CONSTRAINT)"
+              WARNINGS=$((WARNINGS + 1))
+            fi
+
+            echo ""
+          done <<< "$NEW_MIGRATIONS"
+
+          echo "=========================================="
+          echo "Summary: $BREAKING breaking, $WARNINGS warnings"
+          echo "=========================================="
+
+          echo "breaking_changes=$BREAKING" >> $GITHUB_OUTPUT
+          echo "warnings=$WARNINGS" >> $GITHUB_OUTPUT
         continue-on-error: true
 
       - name: Calculate migration totals
@@ -351,38 +436,15 @@ jobs:
           V2_MIGRATION_BREAKING: ${{ steps.v2_migration_check.outputs.breaking_changes }}
           V2_MIGRATION_WARNINGS: ${{ steps.v2_migration_check.outputs.warnings }}
 
-      - name: Upload migration artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: migration-validation-artifacts-${{ github.run_number }}
-          path: |
-            migration-report.txt
-            v2-migration-report.txt
-            migration-breaking-count.txt
-            migration-warning-count.txt
-          retention-days: 30
-
-      - name: Display Migration Compatibility Report
+      - name: Display Migration Summary
         if: always()
         run: |
           echo "=========================================="
-          echo "MIGRATION COMPATIBILITY REPORT"
+          echo "MIGRATION VALIDATION SUMMARY"
           echo "=========================================="
-          echo ""
-          echo "Summary:"
-          echo "  Breaking Changes: ${{ steps.migration_report.outputs.total_breaking }}"
-          echo "  Warnings: ${{ steps.migration_report.outputs.total_warnings }}"
-          echo ""
-          echo "V1 Migrations:"
-          echo "--------------"
-          cat migration-report.txt 2>/dev/null || echo "No changes detected"
-          echo ""
-          echo ""
-          echo "V2 Migrations:"
-          echo "--------------"
-          cat v2-migration-report.txt 2>/dev/null || echo "No changes detected"
-          echo ""
+          echo "Breaking Changes: ${{ steps.migration_report.outputs.total_breaking }}"
+          echo "Warnings: ${{ steps.migration_report.outputs.total_warnings }}"
+          echo "Status: ${{ steps.migration_report.outputs.validation_status }}"
           echo "=========================================="
 
       - name: Fail if migration breaking changes detected
