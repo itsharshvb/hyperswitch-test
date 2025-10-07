@@ -1017,6 +1017,7 @@ pub struct PaymentsRequest {
 
     /// The identifier for the customer
     #[schema(value_type = Option<String>, max_length = 64, min_length = 1, example = "cus_y3oqhf46pyzuxjbcn2giaqnb44")]
+    #[mandatory_in(PaymentsCreateRequest = String)]
     pub customer_id: Option<id_type::CustomerId>,
 
     /// The customer's email address.
