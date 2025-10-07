@@ -304,7 +304,8 @@ jobs:
             exit 0
           fi
 
-          echo "Analyzing migrations for breaking changes..."
+          echo "Files to analyze:"
+          echo "$NEW_MIGRATIONS"
           echo ""
 
           BREAKING=0
@@ -314,28 +315,39 @@ jobs:
           while IFS= read -r file; do
             [[ -z "$file" ]] && continue
 
-            echo "Checking: $file"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "File: $file"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             CONTENT=$(cat "$file")
+
+            FILE_HAS_ISSUES=false
 
             # Breaking patterns
             if echo "$CONTENT" | grep -iE "(DROP TABLE|DROP COLUMN|DELETE FROM|TRUNCATE)" >/dev/null; then
-              echo " BREAKING: Found dangerous operation"
-              echo "$CONTENT" | grep -inE "(DROP TABLE|DROP COLUMN|DELETE FROM|TRUNCATE)"
+              echo "BREAKING CHANGES DETECTED:"
+              echo "$CONTENT" | grep -inE "(DROP TABLE|DROP COLUMN|DELETE FROM|TRUNCATE)" | sed 's/^/  Line /'
               BREAKING=$((BREAKING + 1))
+              FILE_HAS_ISSUES=true
             fi
 
             # Warning patterns
             if echo "$CONTENT" | grep -iE "(ALTER COLUMN .* TYPE|ALTER COLUMN .* SET NOT NULL|DROP INDEX|DROP CONSTRAINT)" >/dev/null; then
-              echo " WARNING: Found potentially breaking operation"
-              echo "$CONTENT" | grep -inE "(ALTER COLUMN .* TYPE|ALTER COLUMN .* SET NOT NULL|DROP INDEX|DROP CONSTRAINT)"
+              echo "WARNINGS:"
+              echo "$CONTENT" | grep -inE "(ALTER COLUMN .* TYPE|ALTER COLUMN .* SET NOT NULL|DROP INDEX|DROP CONSTRAINT)" | sed 's/^/  Line /'
               WARNINGS=$((WARNINGS + 1))
+              FILE_HAS_ISSUES=true
             fi
 
+            if [[ "$FILE_HAS_ISSUES" == "false" ]]; then
+              echo "No issues detected"
+            fi
             echo ""
           done <<< "$NEW_MIGRATIONS"
 
           echo "=========================================="
-          echo "Summary: $BREAKING breaking, $WARNINGS warnings"
+          echo "V1 Migration Summary:"
+          echo "  Breaking Changes: $BREAKING"
+          echo "  Warnings: $WARNINGS"
           echo "=========================================="
 
           echo "breaking_changes=$BREAKING" >> $GITHUB_OUTPUT
@@ -369,7 +381,8 @@ jobs:
             exit 0
           fi
 
-          echo "Analyzing migrations for breaking changes..."
+          echo "Files to analyze:"
+          echo "$NEW_MIGRATIONS"
           echo ""
 
           BREAKING=0
@@ -379,28 +392,39 @@ jobs:
           while IFS= read -r file; do
             [[ -z "$file" ]] && continue
 
-            echo "Checking: $file"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "File: $file"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             CONTENT=$(cat "$file")
+
+            FILE_HAS_ISSUES=false
 
             # Breaking patterns
             if echo "$CONTENT" | grep -iE "(DROP TABLE|DROP COLUMN|DELETE FROM|TRUNCATE)" >/dev/null; then
-              echo " BREAKING: Found dangerous operation"
-              echo "$CONTENT" | grep -inE "(DROP TABLE|DROP COLUMN|DELETE FROM|TRUNCATE)"
+              echo "BREAKING CHANGES DETECTED:"
+              echo "$CONTENT" | grep -inE "(DROP TABLE|DROP COLUMN|DELETE FROM|TRUNCATE)" | sed 's/^/  Line /'
               BREAKING=$((BREAKING + 1))
+              FILE_HAS_ISSUES=true
             fi
 
             # Warning patterns
             if echo "$CONTENT" | grep -iE "(ALTER COLUMN .* TYPE|ALTER COLUMN .* SET NOT NULL|DROP INDEX|DROP CONSTRAINT)" >/dev/null; then
-              echo " WARNING: Found potentially breaking operation"
-              echo "$CONTENT" | grep -inE "(ALTER COLUMN .* TYPE|ALTER COLUMN .* SET NOT NULL|DROP INDEX|DROP CONSTRAINT)"
+              echo "WARNINGS:"
+              echo "$CONTENT" | grep -inE "(ALTER COLUMN .* TYPE|ALTER COLUMN .* SET NOT NULL|DROP INDEX|DROP CONSTRAINT)" | sed 's/^/  Line /'
               WARNINGS=$((WARNINGS + 1))
+              FILE_HAS_ISSUES=true
             fi
 
+            if [[ "$FILE_HAS_ISSUES" == "false" ]]; then
+              echo "No issues detected"
+            fi
             echo ""
           done <<< "$NEW_MIGRATIONS"
 
           echo "=========================================="
-          echo "Summary: $BREAKING breaking, $WARNINGS warnings"
+          echo "V2 Migration Summary:"
+          echo "  Breaking Changes: $BREAKING"
+          echo "  Warnings: $WARNINGS"
           echo "=========================================="
 
           echo "breaking_changes=$BREAKING" >> $GITHUB_OUTPUT
