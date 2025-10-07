@@ -135,25 +135,10 @@ echo "$WARNINGS" > migration-warning-count.txt
 if [[ $BREAKING_CHANGES -gt 0 ]]; then
     echo "VALIDATION FAILED: Breaking changes detected in migrations"
     echo ""
-    echo "Breaking changes can cause:"
-    echo "  - Data loss in production databases"
-    echo "  - Application downtime during deployment"
-    echo "  - Failed rollbacks"
-    echo ""
-    echo "Please consider:"
-    echo "  - Using backward-compatible changes (ADD COLUMN, CREATE TABLE)"
-    echo "  - Creating a data migration plan before structural changes"
-    echo "  - Coordinating with DevOps for blue-green deployment"
-    echo "  - Adding proper down migrations for rollback support"
     exit 1
 elif [[ $WARNINGS -gt 0 ]]; then
     echo "VALIDATION PASSED WITH WARNINGS"
     echo ""
-    echo "Please review the warnings and ensure:"
-    echo "  - Type changes are backward compatible"
-    echo "  - NOT NULL constraints have appropriate defaults"
-    echo "  - Data migrations are properly tested"
-    echo "  - Down migrations are complete and tested"
     exit 0
 else
     echo "VALIDATION PASSED: No breaking changes detected"

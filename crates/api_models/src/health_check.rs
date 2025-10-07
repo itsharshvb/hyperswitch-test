@@ -1,4 +1,6 @@
 use std::collections::hash_map::HashMap;
+
+// Health check models for testing API compatibility workflow
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct RouterHealthCheckResponse {
     pub database: bool,
