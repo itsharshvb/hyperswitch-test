@@ -1,22 +1,26 @@
 name: API Schema Compatibility Check
 
 # This workflow:
-# - Runs on ALL PRs that modify API-related files
-# - Comments on PRs ONLY when 'validate-api' label is present
-# - Always fails if breaking changes are detected (regardless of label)
+# - Runs AFTER validate-openapi-spec.yml completes (ensures schemas are up-to-date)
+# - Also runs on pull_request events for migration changes
+# - Always fails if breaking changes are detected
 
 on:
+  # Trigger after validate-openapi-spec workflow completes
+  workflow_run:
+    workflows: ["Validate Generated OpenAPI Spec File"]
+    types:
+      - completed
+
+  # Also trigger on pull_request for migration-only changes
   pull_request:
     paths:
-      - 'crates/api_models/**'
-      - 'crates/openapi/**'
-      - 'crates/router/**'
-      - 'api-reference/**'
-      - '.oasdiff-config.yaml'
       - 'migrations/**'
       - 'v2_migrations/**'
       - 'v2_compatible_migrations/**'
-    types: [opened, synchronize, reopened, labeled, unlabeled]
+      - '.oasdiff-*'
+      - 'scripts/validate-migrations.sh'
+    types: [opened, synchronize, reopened]
 
   workflow_dispatch:
 
@@ -26,14 +30,27 @@ concurrency:
 
 jobs:
   api-compatibility-check:
-    name: add `validate-api` label to PRs for details
+    name: API & Migration Compatibility Check
     runs-on: ubuntu-latest
-    
-    # Run on all PRs that modify API-related files
-    if: github.event_name == 'pull_request'
-    
+
+    # Only run if the triggering workflow succeeded (for workflow_run) or always run for pull_request
+    if: |
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      github.event_name == 'pull_request' ||
+      github.event_name == 'workflow_dispatch'
+
     steps:
-      - name: Checkout PR
+      - name: Checkout PR (workflow_run trigger)
+        if: github.event_name == 'workflow_run'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_branch }}
+          repository: ${{ github.event.workflow_run.head_repository.full_name }}
+          token: ${{ github.token }}
+
+      - name: Checkout PR (pull_request trigger)
+        if: github.event_name == 'pull_request'
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -41,29 +58,16 @@ jobs:
           repository: ${{ github.event.pull_request.head.repo.full_name }}
           token: ${{ github.token }}
 
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@master
+      - name: Checkout (manual trigger)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/checkout@v4
         with:
-          toolchain: stable 2 weeks ago
-          
-      - name: Setup Rust cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          # Cache key based on Cargo files
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-          # Cache the target directory
-          cache-targets: true
-          # Cache cargo registry
-          cache-all-crates: true
+          fetch-depth: 0
+          token: ${{ github.token }}
 
-      - name: Setup Node.js for validation tools
-        uses: actions/setup-node@v4
-        with:
-          node-version: '18'
-          
       - name: Install system dependencies
         run: |
-          # Install jq for JSON validation and processing
+          # Install jq for JSON validation
           sudo apt-get update && sudo apt-get install -y jq
 
       - name: Setup Go for oasdiff
@@ -88,58 +92,38 @@ jobs:
           export PATH="$HOME/go/bin:$PATH"
           oasdiff --version || oasdiff --help | head -5
 
-      - name: Generate current API schemas
-        env:
-          # Speed up compilation - disable incremental compilation and debug info
-          CARGO_INCREMENTAL: 0
-          RUSTFLAGS: "-C debuginfo=0"
+      - name: Use committed API schemas (skip cargo build for 5min speedup)
         run: |
-          echo "Generating API schemas for current PR..."
-          
-          # Generate V1 schema
-          echo "Building V1 schema..."
-          cargo run -p openapi --features v1 2>&1
-          
-          # Generate V2 schema
-          echo "Building V2 schema..."
-          cargo run -p openapi --features v2 2>&1
-          
-          # Verify and copy generated schemas
-          echo "Verifying generated schema files..."
-          
+          echo "Using committed API schemas from PR branch..."
+          echo "Skipping cargo build saves ~5 minutes by using pre-generated schemas."
+          echo "Schemas should be kept up-to-date via separate workflow or pre-commit hook."
+
+          # Use committed schemas directly (no cargo build needed)
           if [[ -f "api-reference/v1/openapi_spec_v1.json" ]]; then
-            # Validate JSON before copying
             if jq empty api-reference/v1/openapi_spec_v1.json 2>/dev/null; then
               cp api-reference/v1/openapi_spec_v1.json pr-v1-schema.json
-              echo "V1 schema: $(wc -c < pr-v1-schema.json) bytes (valid JSON)"
+              echo "✅ V1 schema: $(wc -c < pr-v1-schema.json) bytes"
             else
-              echo "V1 schema contains invalid JSON"
-              echo "{}" > pr-v1-schema.json
+              echo "❌ ERROR: V1 schema is invalid JSON!"
+              exit 1
             fi
           else
-            echo "V1 schema not found at api-reference/v1/openapi_spec_v1.json"
+            echo "⚠️ WARNING: V1 schema not found, using empty schema"
             echo "{}" > pr-v1-schema.json
           fi
-          
+
           if [[ -f "api-reference/v2/openapi_spec_v2.json" ]]; then
-            # Validate JSON before copying
             if jq empty api-reference/v2/openapi_spec_v2.json 2>/dev/null; then
               cp api-reference/v2/openapi_spec_v2.json pr-v2-schema.json
-              echo "V2 schema: $(wc -c < pr-v2-schema.json) bytes (valid JSON)"
+              echo "✅ V2 schema: $(wc -c < pr-v2-schema.json) bytes"
             else
-              echo "V2 schema contains invalid JSON"
-              echo "{}" > pr-v2-schema.json
+              echo "❌ ERROR: V2 schema is invalid JSON!"
+              exit 1
             fi
           else
-            echo "V2 schema not found at api-reference/v2/openapi_spec_v2.json"
+            echo "⚠️ WARNING: V2 schema not found, using empty schema"
             echo "{}" > pr-v2-schema.json
           fi
-          
-          # Show schema file contents for debugging (first few lines)
-          echo "Debugging - V1 schema file contents (first 3 lines):"
-          head -3 pr-v1-schema.json || echo "No content to show"
-          echo "Debugging - V2 schema file contents (first 3 lines):"
-          head -3 pr-v2-schema.json || echo "No content to show"
 
       - name: Extract base branch schemas
         env:
@@ -213,33 +197,31 @@ jobs:
           echo "total_issues=$BREAKING_CHANGES" >> $GITHUB_OUTPUT
         continue-on-error: true
 
-      - name: Generate compatibility report
-        id: report
-        run: |
-          # Use enhanced report generation script
-          chmod +x ./scripts/generate-compatibility-report.sh
-          ./scripts/generate-compatibility-report.sh > compatibility-report.md
-
-          # Set output variables
-          echo "report_generated=true" >> $GITHUB_OUTPUT
-
-          if [[ "${BREAKING_CHANGES:-0}" -gt 0 ]]; then
-            echo "validation_status=BREAKING CHANGES DETECTED" >> $GITHUB_OUTPUT
-            echo "validation_passed=false" >> $GITHUB_OUTPUT
-          else
-            echo "validation_status=ALL CHECKS PASSED" >> $GITHUB_OUTPUT
-            echo "validation_passed=true" >> $GITHUB_OUTPUT
-          fi
-        env:
-          BREAKING_CHANGES: ${{ steps.breaking_changes.outputs.breaking_changes }}
-
       - name: Display API Compatibility Report
         if: always()
         run: |
           echo "=========================================="
           echo "API COMPATIBILITY REPORT"
           echo "=========================================="
-          cat compatibility-report.md || echo "Report file not found"
+          echo ""
+          echo "V1 API Breaking Changes:"
+          echo "------------------------"
+          cat v1-breaking-report.txt 2>/dev/null || echo "No breaking changes detected"
+          echo ""
+          echo ""
+          echo "V2 API Breaking Changes:"
+          echo "------------------------"
+          cat v2-breaking-report.txt 2>/dev/null || echo "No breaking changes detected"
+          echo ""
+          echo ""
+          echo "V1 API Detailed Diff:"
+          echo "---------------------"
+          cat v1-detailed-diff.txt 2>/dev/null || echo "No changes detected"
+          echo ""
+          echo ""
+          echo "V2 API Detailed Diff:"
+          echo "---------------------"
+          cat v2-detailed-diff.txt 2>/dev/null || echo "No changes detected"
           echo ""
           echo "=========================================="
 
@@ -268,7 +250,6 @@ jobs:
             v2-breaking-report.txt
             v1-detailed-diff.txt
             v2-detailed-diff.txt
-            compatibility-report.md
             v1-breaking-status.txt
             v2-breaking-status.txt
           retention-days: 30
@@ -277,10 +258,24 @@ jobs:
     name: Migration Breaking Change Detection
     runs-on: ubuntu-latest
 
-    if: github.event_name == 'pull_request'
+    # Only run if the triggering workflow succeeded (for workflow_run) or always run for pull_request
+    if: |
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success') ||
+      github.event_name == 'pull_request' ||
+      github.event_name == 'workflow_dispatch'
 
     steps:
-      - name: Checkout PR
+      - name: Checkout PR (workflow_run trigger)
+        if: github.event_name == 'workflow_run'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.workflow_run.head_branch }}
+          repository: ${{ github.event.workflow_run.head_repository.full_name }}
+          token: ${{ github.token }}
+
+      - name: Checkout PR (pull_request trigger)
+        if: github.event_name == 'pull_request'
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -288,18 +283,40 @@ jobs:
           repository: ${{ github.event.pull_request.head.repo.full_name }}
           token: ${{ github.token }}
 
+      - name: Checkout (manual trigger)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ github.token }}
+
       - name: Fetch base branch
-        env:
-          BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
-          git fetch origin "$BASE_REF:$BASE_REF"
+          # For workflow_run, use the base branch from the workflow run event
+          if [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            BASE_REF="main"  # Default to main for workflow_run
+            git fetch origin "$BASE_REF:$BASE_REF"
+          elif [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BASE_REF="${{ github.event.pull_request.base.ref }}"
+            git fetch origin "$BASE_REF:$BASE_REF"
+          else
+            # For workflow_dispatch, fetch main
+            git fetch origin main:main
+          fi
 
       - name: Validate V1 migrations
         id: migration_check
         run: |
-          echo "Running V1 migration validation..."
+          # Determine base ref based on event type
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BASE_REF="origin/${{ github.event.pull_request.base.ref }}"
+          else
+            BASE_REF="origin/main"
+          fi
+
+          echo "Running V1 migration validation against $BASE_REF..."
           chmod +x ./scripts/validate-migrations.sh
-          ./scripts/validate-migrations.sh "migrations" "origin/${{ github.event.pull_request.base.ref }}" > migration-report.txt 2>&1 || true
+          ./scripts/validate-migrations.sh "migrations" "$BASE_REF" > migration-report.txt 2>&1 || true
 
           BREAKING_COUNT=$(cat migration-breaking-count.txt 2>/dev/null || echo "0")
           WARNING_COUNT=$(cat migration-warning-count.txt 2>/dev/null || echo "0")
@@ -313,9 +330,16 @@ jobs:
       - name: Validate V2 migrations
         id: v2_migration_check
         run: |
+          # Determine base ref based on event type
+          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
+            BASE_REF="origin/${{ github.event.pull_request.base.ref }}"
+          else
+            BASE_REF="origin/main"
+          fi
+
           if [[ -d "v2_migrations" ]]; then
-            echo "Running V2 migration validation..."
-            ./scripts/validate-migrations.sh "v2_migrations" "origin/${{ github.event.pull_request.base.ref }}" > v2-migration-report.txt 2>&1 || true
+            echo "Running V2 migration validation against $BASE_REF..."
+            ./scripts/validate-migrations.sh "v2_migrations" "$BASE_REF" > v2-migration-report.txt 2>&1 || true
 
             V2_BREAKING=$(cat migration-breaking-count.txt 2>/dev/null || echo "0")
             V2_WARNING=$(cat migration-warning-count.txt 2>/dev/null || echo "0")
@@ -331,7 +355,7 @@ jobs:
           fi
         continue-on-error: true
 
-      - name: Generate migration report
+      - name: Calculate migration totals
         id: migration_report
         run: |
           TOTAL_BREAKING=$((
@@ -343,23 +367,6 @@ jobs:
             ${MIGRATION_WARNINGS:-0} +
             ${V2_MIGRATION_WARNINGS:-0}
           ))
-
-          cat > migration-compatibility-report.md <<EOF
-          ## Migration Validation Summary
-
-          - **Breaking Changes**: $TOTAL_BREAKING
-          - **Warnings**: $TOTAL_WARNINGS
-
-          ### V1 Migrations
-          \`\`\`
-          $(cat migration-report.txt 2>/dev/null || echo "No changes detected")
-          \`\`\`
-
-          ### V2 Migrations
-          \`\`\`
-          $(cat v2-migration-report.txt 2>/dev/null || echo "No changes detected")
-          \`\`\`
-          EOF
 
           echo "total_breaking=$TOTAL_BREAKING" >> $GITHUB_OUTPUT
           echo "total_warnings=$TOTAL_WARNINGS" >> $GITHUB_OUTPUT
@@ -385,7 +392,6 @@ jobs:
           path: |
             migration-report.txt
             v2-migration-report.txt
-            migration-compatibility-report.md
             migration-breaking-count.txt
             migration-warning-count.txt
           retention-days: 30
@@ -396,7 +402,19 @@ jobs:
           echo "=========================================="
           echo "MIGRATION COMPATIBILITY REPORT"
           echo "=========================================="
-          cat migration-compatibility-report.md || echo "Report file not found"
+          echo ""
+          echo "Summary:"
+          echo "  Breaking Changes: ${{ steps.migration_report.outputs.total_breaking }}"
+          echo "  Warnings: ${{ steps.migration_report.outputs.total_warnings }}"
+          echo ""
+          echo "V1 Migrations:"
+          echo "--------------"
+          cat migration-report.txt 2>/dev/null || echo "No changes detected"
+          echo ""
+          echo ""
+          echo "V2 Migrations:"
+          echo "--------------"
+          cat v2-migration-report.txt 2>/dev/null || echo "No changes detected"
           echo ""
           echo "=========================================="
 
