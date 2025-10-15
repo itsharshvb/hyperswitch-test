@@ -46,20 +46,12 @@ jobs:
         with:
           go-version: '1.21'
 
-      - name: Install validation tools
+      - name: Install oasdiff
         run: |
-          # Install oasdiff using Go with correct module path
+          # Install oasdiff with pinned version for reproducibility
           go install github.com/oasdiff/oasdiff@v1.11.7
-
-          # Add Go bin to PATH for current session
           echo "$HOME/go/bin" >> $GITHUB_PATH
-
-          # Verify installation
-          echo "oasdiff installation completed"
-
-      - name: Verify oasdiff installation
-        run: |
-          oasdiff --version || oasdiff --help | head -5
+          oasdiff --version
 
       - name: Use committed API schemas
         run: |
@@ -129,7 +121,6 @@ jobs:
           echo "Checking V1 API for breaking changes..."
           if oasdiff breaking \
             --fail-on ERR \
-            --err-ignore .github/oasdiff/.oasdiff-err-ignore.yaml \
             --warn-ignore .github/oasdiff/.oasdiff-warn-ignore.yaml \
             base-v1-schema.json pr-v1-schema.json > v1-breaking-report.txt 2>&1; then
             echo "No breaking changes in V1 API"
@@ -145,7 +136,6 @@ jobs:
           echo "Checking V2 API for breaking changes..."
           if oasdiff breaking \
             --fail-on ERR \
-            --err-ignore .github/oasdiff/.oasdiff-err-ignore.yaml \
             --warn-ignore .github/oasdiff/.oasdiff-warn-ignore.yaml \
             base-v2-schema.json pr-v2-schema.json > v2-breaking-report.txt 2>&1; then
             echo "No breaking changes in V2 API"
