@@ -1,0 +1,291 @@
+ID                                                      DESCRIPTION                                                     LEVEL
+api-deprecated-sunset-missing                           endpoint deprecated without sunset date                         error
+api-deprecated-sunset-parse                             endpoint deprecated with invalid sunset date                    error
+api-global-security-added                               security scheme added in security                               info
+api-global-security-removed                             security scheme deleted in security                             info
+api-global-security-scope-added                         scope added to a security scheme in security                    info
+api-global-security-scope-removed                       scope deleted from a security scheme in security                info
+api-invalid-stability-level                             invalid stability level                                         error
+api-operation-id-added                                  operation ID added to an endpoint                               info
+api-operation-id-removed                                operation ID deleted from an endpoint                           info
+api-path-removed-before-sunset                          path and endpoint deleted before sunset date                    error
+api-path-removed-with-deprecation                       api-path-removed-with-deprecation-description                   info
+api-path-removed-without-deprecation                    path and endpoint deleted without deprecation                   error
+api-path-sunset-parse                                   path and endpoint deleted with invalid or missing sunset date   error
+api-removed-before-sunset                               endpoint deleted before sunset date                             error
+api-removed-with-deprecation                            api-removed-with-deprecation-description                        info
+api-removed-without-deprecation                         endpoint deleted without deprecation                            error
+api-schema-removed                                      schema deleted from components/schemas                          info
+api-security-added                                      security requirements added to endpoint                         info
+api-security-component-added                            security scheme added in components/securitySchemes             info
+api-security-component-oauth-scope-added                scope added to OAuth flow in components/securitySchemes         info
+api-security-component-oauth-scope-changed              scope modified in OAuth flow in components/securitySchemes      info
+api-security-component-oauth-scope-removed              scope deleted from OAuth flow in components/securitySchemes     info
+api-security-component-oauth-token-url-changed          token URL modified in OAuth flow in components/securitySchemes  info
+api-security-component-oauth-url-changed                auth URL modified in OAuth flow in components/securitySchemes   info
+api-security-component-removed                          security scheme deleted in components/securitySchemes           info
+api-security-component-type-changed                     security scheme type modified in components/securitySchemes     info
+api-security-removed                                    security requirements deleted from endpoint                     info
+api-security-scope-added                                scope added to an endpoint's security scheme                    info
+api-security-scope-removed                              scope deleted from an endpoint's security scheme                info
+api-stability-decreased                                 endpoint stability level decreased                              error
+api-sunset-date-changed-too-small                       modified sunset date doesn't meet min required deprecation days error
+api-sunset-date-too-small                               deprecated endpoint sunset before min required deprecation days error
+api-tag-added                                           endpoint tag added                                              info
+api-tag-removed                                         endpoint tag deleted                                            info
+endpoint-added                                          endpoint added                                                  info
+endpoint-deprecated                                     endpoint deprecated                                             info
+endpoint-reactivated                                    endpoint reactivated (deprecation set to false)                 info
+new-optional-request-default-parameter-to-existing-path optional request parameter added at path level                  info
+new-optional-request-parameter                          optional request parameter added to endpoint                    info
+new-optional-request-property                           optional property added to request                              info
+new-request-path-parameter                              new request path parameter                                      error
+new-required-request-default-parameter-to-existing-path required request parameter added at path level                  error
+new-required-request-header-property                    new required request header                                     error
+new-required-request-parameter                          required request parameter added to endpoint                    error
+new-required-request-property                           required property added to request                              error
+new-required-request-property-with-default              required property with default value added to request           info
+optional-response-header-removed                        optional response header deleted                                warning
+request-body-added-optional                             optional request body added                                     info
+request-body-added-required                             required request body added                                     error
+request-body-all-of-added                               sub-schema added to allOf in request body                       error
+request-body-all-of-removed                             sub-schema deleted from allOf in request body                   warning
+request-body-any-of-added                               sub-schema added to anyOf in request body                       info
+request-body-any-of-removed                             sub-schema deleted from anyOf in request body                   error
+request-body-became-enum                                request body restricted to enum                                 error
+request-body-became-not-nullable                        null excluded as a possible value in request body               error
+request-body-became-nullable                            null added as a possible value in request body                  info
+request-body-became-optional                            request body became optional                                    info
+request-body-became-required                            request body became required                                    error
+request-body-default-value-added                        request body default value set                                  info
+request-body-default-value-changed                      request body default value modified                             info
+request-body-default-value-removed                      request body default value unset                                info
+request-body-discriminator-added                        request body discriminator added                                info
+request-body-discriminator-mapping-added                request body discriminator mapping added                        info
+request-body-discriminator-mapping-changed              request body discriminator mapping changed                      info
+request-body-discriminator-mapping-deleted              request body discriminator mapping deleted                      info
+request-body-discriminator-property-name-changed        request body discriminator property name changed                info
+request-body-discriminator-removed                      request body discriminator deleted                              info
+request-body-enum-value-removed                         request body enum value deleted                                 info
+request-body-list-of-types-narrowed                     request-body-list-of-types-narrowed-description                 error
+request-body-list-of-types-widened                      request-body-list-of-types-widened-description                  info
+request-body-max-decreased                              request body max decreased                                      error
+request-body-max-increased                              request body max increased                                      info
+request-body-max-length-decreased                       request body max length decreased                               error
+request-body-max-length-increased                       request body max length increased                               info
+request-body-max-length-set                             request body max length set                                     warning
+request-body-max-set                                    request body max set                                            warning
+request-body-media-type-added                           request body media-type added                                   info
+request-body-media-type-removed                         request body media-type deleted                                 error
+request-body-min-decreased                              request body min decreased                                      info
+request-body-min-increased                              request body min increased                                      error
+request-body-min-items-increased                        request-body-min-items-increased-description                    error
+request-body-min-items-set                              request-body-min-items-set-description                          warning
+request-body-min-length-decreased                       request body min length decreased                               info
+request-body-min-length-increased                       request body min length increased                               error
+request-body-min-set                                    request body min set                                            warning
+request-body-one-of-added                               sub-schema added to oneOf in request body                       info
+request-body-one-of-removed                             sub-schema deleted from oneOf in request body                   error
+request-body-removed                                    request body removed                                            error
+request-body-type-changed                               request body type changed                                       error
+request-body-type-generalized                           request body type generalized                                   info
+request-header-property-became-enum                     request header property restricted to enum                      error
+request-header-property-became-required                 request header property became required                         error
+request-optional-property-became-not-read-only          request optional property became not read-only                  info
+request-optional-property-became-not-write-only         request optional property became not write-only                 info
+request-optional-property-became-read-only              request optional property became read-only                      info
+request-optional-property-became-write-only             request optional property became write-only                     info
+request-parameter-became-enum                           request parameter restricted to enum                            error
+request-parameter-became-optional                       request parameter became optional                               info
+request-parameter-became-required                       request parameter became required                               error
+request-parameter-default-value-added                   request parameter default value set                             error
+request-parameter-default-value-changed                 request parameter default value changed                         error
+request-parameter-default-value-removed                 request parameter default value unset                           error
+request-parameter-deprecated                            request-parameter-deprecated-description                        info
+request-parameter-deprecated-sunset-missing             request-parameter-deprecated-sunset-missing-description         error
+request-parameter-enum-value-added                      request parameter enum value added                              info
+request-parameter-enum-value-removed                    request parameter enum value deleted                            error
+request-parameter-list-of-types-narrowed                request-parameter-list-of-types-narrowed-description            error
+request-parameter-list-of-types-widened                 request-parameter-list-of-types-widened-description             info
+request-parameter-max-decreased                         request parameter max decreased                                 error
+request-parameter-max-increased                         request parameter max increased                                 info
+request-parameter-max-items-decreased                   request parameter max items decreased                           error
+request-parameter-max-items-increased                   request parameter max items increased                           info
+request-parameter-max-length-decreased                  request parameter max length decreased                          error
+request-parameter-max-length-increased                  request parameter max length increased                          info
+request-parameter-max-length-set                        request parameter max length set                                warning
+request-parameter-max-set                               request parameter max set                                       warning
+request-parameter-min-decreased                         request parameter min decreased                                 info
+request-parameter-min-increased                         request parameter min increased                                 error
+request-parameter-min-items-decreased                   request parameter min items decreased                           info
+request-parameter-min-items-increased                   request parameter min items increased                           error
+request-parameter-min-items-set                         request parameter min items set                                 warning
+request-parameter-min-length-decreased                  request parameter min length decreased                          info
+request-parameter-min-length-increased                  request parameter min length increased                          error
+request-parameter-min-set                               request parameter min set                                       warning
+request-parameter-pattern-added                         request parameter pattern set                                   error
+request-parameter-pattern-changed                       request parameter pattern changed                               warning
+request-parameter-pattern-generalized                   request parameter pattern generalized                           info
+request-parameter-pattern-removed                       request parameter pattern unset                                 info
+request-parameter-property-list-of-types-narrowed       request-parameter-property-list-of-types-narrowed-description   error
+request-parameter-property-list-of-types-widened        request-parameter-property-list-of-types-widened-description    info
+request-parameter-property-type-changed                 request parameter property type changed                         warning
+request-parameter-property-type-generalized             request parameter property type generalized                     info
+request-parameter-property-type-specialized             request parameter property type specialized                     error
+request-parameter-reactivated                           request-parameter-reactivated-description                       info
+request-parameter-removed                               request parameter deleted                                       warning
+request-parameter-removed-before-sunset                 request-parameter-removed-before-sunset-description             error
+request-parameter-removed-with-deprecation              request-parameter-removed-with-deprecation-description          info
+request-parameter-sunset-date-changed-too-small         request-parameter-sunset-date-changed-too-small-description     error
+request-parameter-sunset-date-too-small                 request-parameter-sunset-date-too-small-description             error
+request-parameter-sunset-deleted                        request-parameter-sunset-deleted-description                    error
+request-parameter-sunset-parse                          request-parameter-sunset-parse-description                      error
+request-parameter-type-changed                          request parameter type changed                                  error
+request-parameter-type-generalized                      request parameter type generalized                              info
+request-parameter-x-extensible-enum-value-removed       request parameter-x-extensible-enum value deleted               error
+request-property-all-of-added                           sub-schema added to allOf in request property                   error
+request-property-all-of-removed                         sub-schema deleted from allOf in request property               warning
+request-property-any-of-added                           sub-schema deleted from anyOf in request property               info
+request-property-any-of-removed                         sub-schema deleted from anyOf in request property               error
+request-property-became-enum                            request property restricted to enum                             error
+request-property-became-not-nullable                    request property became not nullable                            error
+request-property-became-nullable                        request property became nullable                                info
+request-property-became-optional                        request property became optional                                info
+request-property-became-required                        request property became required                                error
+request-property-became-required-with-default           request property with a default value became required           info
+request-property-default-value-added                    request property default value set                              info
+request-property-default-value-changed                  request property default value changed                          info
+request-property-default-value-removed                  request property default value unset                            info
+request-property-discriminator-added                    request property discriminator added                            info
+request-property-discriminator-mapping-added            request property discriminator mapping added                    info
+request-property-discriminator-mapping-changed          request property discriminator mapping changed                  info
+request-property-discriminator-mapping-deleted          request property discriminator mapping deleted                  info
+request-property-discriminator-property-name-changed    request property discriminator property name changed            info
+request-property-discriminator-removed                  request property discriminator removed                          info
+request-property-enum-value-added                       request property enum value added                               info
+request-property-enum-value-removed                     request property enum value removed                             error
+request-property-list-of-types-narrowed                 request-property-list-of-types-narrowed-description             error
+request-property-list-of-types-widened                  request-property-list-of-types-widened-description              info
+request-property-max-decreased                          request property max decreased                                  error
+request-property-max-increased                          request property max increased                                  info
+request-property-max-length-decreased                   request property max length decreased                           error
+request-property-max-length-increased                   request property max length increased                           info
+request-property-max-length-set                         request property max length set                                 warning
+request-property-max-set                                request property max set                                        warning
+request-property-min-decreased                          request property min decreased                                  info
+request-property-min-increased                          request property min increased                                  error
+request-property-min-items-increased                    request property min items increased                            error
+request-property-min-items-set                          request property min items set                                  warning
+request-property-min-length-decreased                   request property min length decreased                           info
+request-property-min-length-increased                   request property min length increased                           error
+request-property-min-set                                request property min set                                        warning
+request-property-one-of-added                           sub-schema added to oneOf in request property                   info
+request-property-one-of-removed                         sub-schema deleted from oneOf in request property               error
+request-property-pattern-added                          request property pattern set                                    error
+request-property-pattern-changed                        request property pattern changed                                warning
+request-property-pattern-generalized                    request property pattern generalized                            info
+request-property-pattern-removed                        request property pattern unset                                  info
+request-property-removed                                request property removed                                        warning
+request-property-type-changed                           request property type changed                                   error
+request-property-type-generalized                       request property type generalized                               info
+request-property-x-extensible-enum-value-removed        request property x-extensible-enum value removed                error
+request-read-only-property-enum-value-removed           request read-only property enum value removed                   info
+request-read-only-property-max-decreased                request read-only property max decreased                        info
+request-read-only-property-max-length-decreased         request read-only property max length decreased                 info
+request-read-only-property-min-increased                request read-only property min increased                        info
+request-required-property-became-not-read-only          request required property became not read-only                  info
+request-required-property-became-not-write-only         request required property became not write-only                 info
+request-required-property-became-read-only              request required property became read-only                      info
+request-required-property-became-write-only             request required property became write-only                     info
+required-response-header-removed                        required response header removed                                error
+response-body-all-of-added                              sub-schema added to allOf in response body                      info
+response-body-all-of-removed                            sub-schema removed from allOf in response body                  info
+response-body-any-of-added                              sub-schema added to anyOf in response body                      info
+response-body-any-of-removed                            sub-schema removed from anyOf in response body                  info
+response-body-became-nullable                           response body became nullable                                   error
+response-body-default-value-added                       response body default value set                                 info
+response-body-default-value-changed                     response body default value changed                             info
+response-body-default-value-removed                     response body default value unset                               info
+response-body-discriminator-added                       response body discriminator added                               info
+response-body-discriminator-mapping-added               response body discriminator mapping added                       info
+response-body-discriminator-mapping-changed             response body discriminator mapping changed                     info
+response-body-discriminator-mapping-deleted             response body discriminator mapping deleted                     info
+response-body-discriminator-property-name-changed       response body discriminator property name changed               info
+response-body-discriminator-removed                     response body discriminator removed                             info
+response-body-list-of-types-narrowed                    response-body-list-of-types-narrowed-description                info
+response-body-list-of-types-widened                     response-body-list-of-types-widened-description                 error
+response-body-max-increased                             response body max increased                                     error
+response-body-max-length-increased                      response body max length increased                              error
+response-body-max-length-unset                          response body max length unset                                  error
+response-body-min-decreased                             response body min decreased                                     error
+response-body-min-items-decreased                       response body min items decreased                               error
+response-body-min-items-unset                           response body min items unset                                   error
+response-body-min-length-decreased                      response body min length decreased                              error
+response-body-one-of-added                              sub-schema added to oneOf in response body                      error
+response-body-one-of-removed                            sub-schema removed from oneOf in response body                  info
+response-body-type-changed                              response body type changed                                      error
+response-header-became-optional                         response header became optional                                 error
+response-media-type-added                               response media type added                                       info
+response-media-type-name-changed                        response-media-type-name-changed-description                    info
+response-media-type-name-generalized                    response-media-type-name-generalized-description                error
+response-media-type-name-specialized                    response-media-type-name-specialized-description                info
+response-media-type-removed                             response media type removed                                     error
+response-mediatype-enum-value-removed                   response mediatype enum value removed                           info
+response-non-success-status-added                       response non-success status added                               info
+response-non-success-status-removed                     response non-success status removed                             info
+response-optional-property-added                        response optional property added                                info
+response-optional-property-became-not-read-only         response optional property became not read-only                 info
+response-optional-property-became-not-write-only        response optional property became not write-only                info
+response-optional-property-became-read-only             response optional property became read-only                     info
+response-optional-property-became-write-only            response optional property became write-only                    info
+response-optional-property-removed                      response optional property removed                              warning
+response-optional-write-only-property-added             response optional write-only property added                     info
+response-optional-write-only-property-removed           response optional write-only property removed                   info
+response-property-all-of-added                          sub-schema added to allOf in response property                  info
+response-property-all-of-removed                        sub-schema removed from allOf in response property              info
+response-property-any-of-added                          sub-schema added to anyOf in response property                  info
+response-property-any-of-removed                        sub-schema removed from anyOf in response property              info
+response-property-became-nullable                       response property became nullable                               error
+response-property-became-optional                       response property became optional                               error
+response-property-became-required                       response property became required                               info
+response-property-default-value-added                   response property default value set                             info
+response-property-default-value-changed                 response property default value changed                         info
+response-property-default-value-removed                 response property default value unset                           info
+response-property-discriminator-added                   response property discriminator added                           info
+response-property-discriminator-mapping-added           response property discriminator mapping added                   info
+response-property-discriminator-mapping-changed         response property discriminator mapping changed                 info
+response-property-discriminator-mapping-deleted         response property discriminator mapping deleted                 info
+response-property-discriminator-property-name-changed   response property discriminator property name changed           info
+response-property-discriminator-removed                 response property discriminator removed                         info
+response-property-enum-value-added                      response property enum value added                              warning
+response-property-enum-value-removed                    response property enum value removed                            info
+response-property-list-of-types-narrowed                response-property-list-of-types-narrowed-description            info
+response-property-list-of-types-widened                 response-property-list-of-types-widened-description             error
+response-property-max-increased                         response property max increased                                 error
+response-property-max-length-increased                  response property max length increased                          error
+response-property-max-length-unset                      response property max length unset                              error
+response-property-min-decreased                         response property min decreased                                 error
+response-property-min-items-decreased                   response property min items decreased                           error
+response-property-min-items-unset                       response property min items unset                               error
+response-property-min-length-decreased                  response property min length decreased                          error
+response-property-one-of-added                          sub-schema added to oneOf in response property                  error
+response-property-one-of-removed                        sub-schema removed from oneOf in response property              info
+response-property-pattern-added                         response property pattern set                                   info
+response-property-pattern-changed                       response property pattern changed                               info
+response-property-pattern-removed                       response property pattern unset                                 info
+response-property-type-changed                          response property type changed                                  error
+response-required-property-added                        response required property added                                info
+response-required-property-became-not-read-only         response required property became not read-only                 info
+response-required-property-became-not-write-only        response required property became not write-only                warning
+response-required-property-became-read-only             response required property became read-only                     info
+response-required-property-became-write-only            response required property became write-only                    info
+response-required-property-removed                      response required property removed                              error
+response-required-write-only-property-added             response required write-only property added                     info
+response-required-write-only-property-removed           response required write-only property removed                   info
+response-success-status-added                           response success status added                                   info
+response-success-status-removed                         response success status removed                                 error
+response-write-only-property-became-optional            response write-only property became optional                    info
+response-write-only-property-became-required            response write-only property became required                    info
+response-write-only-property-enum-value-added           response write-only property enum value added                   info
+sunset-deleted                                          sunset deleted                                                  error
+
