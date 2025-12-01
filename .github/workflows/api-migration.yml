@@ -139,7 +139,7 @@ jobs:
         id: migration_check
         run: |
           BASE_REF="origin/${{ github.event.pull_request.base.ref }}"
-          NEW_MIGRATIONS=$(git diff --name-only --diff-filter=AM "$BASE_REF"...HEAD -- "migrations/**/*.sql" 2>/dev/null || echo "")
+          NEW_MIGRATIONS=$(git diff --name-only --diff-filter=AM "$BASE_REF"...HEAD -- "migrations/**/up.sql" 2>/dev/null || echo "")
 
           if [[ -z "$NEW_MIGRATIONS" ]]; then
             echo "breaking_changes=0" >> $GITHUB_OUTPUT
@@ -173,15 +173,17 @@ jobs:
             # Check for breaking changes
             if grep -iEq "$BREAKING_PATTERNS" "$file"; then
               echo "BREAKING: $file"
+              MATCH_COUNT=$(grep -icE "$BREAKING_PATTERNS" "$file")
               grep -inE "$BREAKING_PATTERNS" "$file" | sed 's/^/  /' || true
-              BREAKING=$((BREAKING + 1))
+              BREAKING=$((BREAKING + MATCH_COUNT))
             fi
 
             # Check for warnings
             if grep -iEq "$WARNING_PATTERNS" "$file"; then
               echo "WARNING: $file"
+              MATCH_COUNT=$(grep -icE "$WARNING_PATTERNS" "$file")
               grep -inE "$WARNING_PATTERNS" "$file" | sed 's/^/  /' || true
-              WARNINGS=$((WARNINGS + 1))
+              WARNINGS=$((WARNINGS + MATCH_COUNT))
             fi
           done <<< "$NEW_MIGRATIONS"
 
@@ -199,7 +201,7 @@ jobs:
           fi
 
           BASE_REF="origin/${{ github.event.pull_request.base.ref }}"
-          NEW_MIGRATIONS=$(git diff --name-only --diff-filter=AM "$BASE_REF"...HEAD -- "v2_migrations/**/*.sql" 2>/dev/null || echo "")
+          NEW_MIGRATIONS=$(git diff --name-only --diff-filter=AM "$BASE_REF"...HEAD -- "v2_migrations/**/up.sql" 2>/dev/null || echo "")
 
           if [[ -z "$NEW_MIGRATIONS" ]]; then
             echo "breaking_changes=0" >> $GITHUB_OUTPUT
@@ -233,15 +235,17 @@ jobs:
             # Check for breaking changes
             if grep -iEq "$BREAKING_PATTERNS" "$file"; then
               echo "BREAKING: $file"
+              MATCH_COUNT=$(grep -icE "$BREAKING_PATTERNS" "$file")
               grep -inE "$BREAKING_PATTERNS" "$file" | sed 's/^/  /' || true
-              BREAKING=$((BREAKING + 1))
+              BREAKING=$((BREAKING + MATCH_COUNT))
             fi
 
             # Check for warnings
             if grep -iEq "$WARNING_PATTERNS" "$file"; then
               echo "WARNING: $file"
+              MATCH_COUNT=$(grep -icE "$WARNING_PATTERNS" "$file")
               grep -inE "$WARNING_PATTERNS" "$file" | sed 's/^/  /' || true
-              WARNINGS=$((WARNINGS + 1))
+              WARNINGS=$((WARNINGS + MATCH_COUNT))
             fi
           done <<< "$NEW_MIGRATIONS"
 
@@ -259,7 +263,7 @@ jobs:
           fi
 
           BASE_REF="origin/${{ github.event.pull_request.base.ref }}"
-          NEW_MIGRATIONS=$(git diff --name-only --diff-filter=AM "$BASE_REF"...HEAD -- "v2_compatible_migrations/**/*.sql" 2>/dev/null || echo "")
+          NEW_MIGRATIONS=$(git diff --name-only --diff-filter=AM "$BASE_REF"...HEAD -- "v2_compatible_migrations/**/up.sql" 2>/dev/null || echo "")
 
           if [[ -z "$NEW_MIGRATIONS" ]]; then
             echo "breaking_changes=0" >> $GITHUB_OUTPUT
@@ -293,15 +297,17 @@ jobs:
             # Check for breaking changes
             if grep -iEq "$BREAKING_PATTERNS" "$file"; then
               echo "BREAKING: $file"
+              MATCH_COUNT=$(grep -icE "$BREAKING_PATTERNS" "$file")
               grep -inE "$BREAKING_PATTERNS" "$file" | sed 's/^/  /' || true
-              BREAKING=$((BREAKING + 1))
+              BREAKING=$((BREAKING + MATCH_COUNT))
             fi
 
             # Check for warnings
             if grep -iEq "$WARNING_PATTERNS" "$file"; then
               echo "WARNING: $file"
+              MATCH_COUNT=$(grep -icE "$WARNING_PATTERNS" "$file")
               grep -inE "$WARNING_PATTERNS" "$file" | sed 's/^/  /' || true
-              WARNINGS=$((WARNINGS + 1))
+              WARNINGS=$((WARNINGS + MATCH_COUNT))
             fi
           done <<< "$NEW_MIGRATIONS"
 
