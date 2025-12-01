@@ -28,6 +28,9 @@ pub struct OrganizationCreateRequest {
     /// Name of the organization
     pub organization_name: String,
 
+    /// Email of the organization (required field - BREAKING CHANGE)
+    pub organization_email: String,
+
     /// Details about the organization
     #[schema(value_type = Option<Object>)]
     pub organization_details: Option<pii::SecretSerdeValue>,
@@ -65,10 +68,6 @@ pub struct OrganizationResponse {
     /// Name of the Organization
     pub organization_name: Option<String>,
 
-    /// Details about the organization
-    #[schema(value_type = Option<Object>)]
-    pub organization_details: Option<pii::SecretSerdeValue>,
-
     /// Metadata is useful for storing additional, unstructured information on an object.
     #[schema(value_type = Option<Object>)]
     pub metadata: Option<pii::SecretSerdeValue>,
@@ -90,9 +89,6 @@ pub struct OrganizationResponse {
     /// Name of the Organization
     pub organization_name: Option<String>,
 
-    /// Details about the organization
-    #[schema(value_type = Option<Object>)]
-    pub organization_details: Option<pii::SecretSerdeValue>,
 
     /// Metadata is useful for storing additional, unstructured information on an object.
     #[schema(value_type = Option<Object>)]

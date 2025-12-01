@@ -16660,12 +16660,17 @@
       "OrganizationCreateRequest": {
         "type": "object",
         "required": [
-          "organization_name"
+          "organization_name",
+          "organization_email"
         ],
         "properties": {
           "organization_name": {
             "type": "string",
             "description": "Name of the organization"
+          },
+          "organization_email": {
+            "type": "string",
+            "description": "Email of the organization (required field - BREAKING CHANGE)"
           },
           "organization_details": {
             "type": "object",
@@ -16698,11 +16703,6 @@
           "organization_name": {
             "type": "string",
             "description": "Name of the Organization",
-            "nullable": true
-          },
-          "organization_details": {
-            "type": "object",
-            "description": "Details about the organization",
             "nullable": true
           },
           "metadata": {
