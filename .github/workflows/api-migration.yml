@@ -379,3 +379,8 @@ jobs:
           echo "Total: Breaking=${{ steps.migration_report.outputs.total_breaking }} Warnings=${{ steps.migration_report.outputs.total_warnings }}"
           echo "Status: ${{ steps.migration_report.outputs.validation_status }}"
           echo "=========================================="
+
+          if [[ "${{ steps.migration_report.outputs.total_breaking }}" != "0" && "${{ steps.migration_report.outputs.total_breaking }}" != "" ]]; then
+            echo "::error::Migration validation failed with breaking changes."
+            exit 1
+          fi
