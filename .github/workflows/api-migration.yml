@@ -193,12 +193,11 @@ jobs:
           if [[ $BREAKING -gt 0 ]]; then
             echo "::error::Breaking changes detected in V1 database migrations."
             echo "::error::Found $BREAKING breaking change(s)."
-            echo "::error::Process completed with exit code 1."
             exit 1
           fi
-        continue-on-error: true
 
       - name: Validate V2 migrations
+        if: success() || failure()
         id: v2_migration_check
         run: |
           if [[ ! -d "v2_migrations" ]]; then
@@ -258,9 +257,15 @@ jobs:
 
           echo "breaking_changes=$BREAKING" >> $GITHUB_OUTPUT
           echo "warnings=$WARNINGS" >> $GITHUB_OUTPUT
-        continue-on-error: true
+
+          if [[ $BREAKING -gt 0 ]]; then
+            echo "::error::Breaking changes detected in V2 database migrations."
+            echo "::error::Found $BREAKING breaking change(s)."
+            exit 1
+          fi
 
       - name: Validate V2 compatible migrations
+        if: success() || failure()
         id: v2_compat_migration_check
         run: |
           if [[ ! -d "v2_compatible_migrations" ]]; then
@@ -320,9 +325,15 @@ jobs:
 
           echo "breaking_changes=$BREAKING" >> $GITHUB_OUTPUT
           echo "warnings=$WARNINGS" >> $GITHUB_OUTPUT
-        continue-on-error: true
+
+          if [[ $BREAKING -gt 0 ]]; then
+            echo "::error::Breaking changes detected in V2 compatible database migrations."
+            echo "::error::Found $BREAKING breaking change(s)."
+            exit 1
+          fi
 
       - name: Calculate migration totals
+        if: always()
         id: migration_report
         env:
           MIGRATION_BREAKING: ${{ steps.migration_check.outputs.breaking_changes }}
@@ -368,10 +379,3 @@ jobs:
           echo "Total: Breaking=${{ steps.migration_report.outputs.total_breaking }} Warnings=${{ steps.migration_report.outputs.total_warnings }}"
           echo "Status: ${{ steps.migration_report.outputs.validation_status }}"
           echo "=========================================="
-
-      - name: Fail if migration breaking changes detected
-        if: steps.migration_report.outputs.total_breaking != '0' && steps.migration_report.outputs.total_breaking != ''
-        run: |
-          echo "::error::Breaking changes detected in database migrations."
-          echo "::error::Found ${{ steps.migration_report.outputs.total_breaking }} breaking change(s)."
-          exit 1
