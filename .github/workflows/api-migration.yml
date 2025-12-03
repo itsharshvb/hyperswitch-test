@@ -27,7 +27,7 @@ concurrency:
 
 jobs:
   api-compatibility-check:
-    name: API & Migration Compatibility Check
+    name: API Compatibility Check
     runs-on: ubuntu-latest
 
     steps:
