@@ -189,6 +189,13 @@ jobs:
 
           echo "breaking_changes=$BREAKING" >> $GITHUB_OUTPUT
           echo "warnings=$WARNINGS" >> $GITHUB_OUTPUT
+
+          if [[ $BREAKING -gt 0 ]]; then
+            echo "::error::Breaking changes detected in V1 database migrations."
+            echo "::error::Found $BREAKING breaking change(s)."
+            echo "::error::Process completed with exit code 1."
+            exit 1
+          fi
         continue-on-error: true
 
       - name: Validate V2 migrations
