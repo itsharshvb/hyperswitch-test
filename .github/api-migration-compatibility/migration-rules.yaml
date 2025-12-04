@@ -29,8 +29,12 @@ rule_patterns:
     description: "Renaming a column breaks applications using the old name"
 
   set_not_null:
-    pattern: 'SET\s+NOT\s+NULL'
-    description: "Making a nullable column NOT NULL can fail with existing NULL data"
+    pattern: 'ALTER\s+COLUMN\s+.*\s+SET\s+NOT\s+NULL'
+    description: "Making an existing nullable column NOT NULL can fail with existing NULL data"
+
+  add_column_not_null_no_default:
+    pattern: 'ADD\s+COLUMN\s+(?!.*DEFAULT).*NOT\s+NULL'
+    description: "Adding a NOT NULL column without a DEFAULT will fail on existing rows"
 
   alter_column_type:
     pattern: '(ALTER\s+COLUMN\s+.*\s+TYPE|ALTER\s+COLUMN\s+.*\s+SET\s+DATA\s+TYPE)'
@@ -51,7 +55,7 @@ rule_patterns:
 # Apply rules per migration folder
 # Each folder can have its own set of breaking and warning rules
 folder_rules:
-  # V1 migrations 
+  # V1 migrations
   migrations:
     breaking:
       - drop_table
@@ -61,13 +65,14 @@ folder_rules:
       - rename_table
       - rename_column
       - set_not_null
-    warnings:
+      - add_column_not_null_no_default
       - alter_column_type
+    warnings:
       - drop_index
       - drop_constraint
       - alter_default
 
-  # V2 migrations 
+  # V2 migrations
   v2_migrations:
     breaking:
       - drop_table
@@ -77,13 +82,14 @@ folder_rules:
       - rename_table
       - rename_column
       - set_not_null
-    warnings:
+      - add_column_not_null_no_default
       - alter_column_type
+    warnings:
       - drop_index
       - drop_constraint
       - alter_default
 
-  # V2 compatible migrations 
+  # V2 compatible migrations
   v2_compatible_migrations:
     breaking:
       - drop_table
@@ -93,9 +99,9 @@ folder_rules:
       - rename_table
       - rename_column
       - set_not_null
-    warnings:
+      - add_column_not_null_no_default
       - alter_column_type
+    warnings:
       - drop_index
       - drop_constraint
       - alter_default
-
